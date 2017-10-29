@@ -15,5 +15,11 @@ class LeoparserTest(unittest.TestCase):
             f_dsc.close()
         return content
 
+    def test_to_str(self):
+        lp = self.get_parser()
+        object_id_in_hex = hex(id(lp))
+        expected_value = '<LeoParser ({})>'.format(object_id_in_hex)
+        self.assertEqual(lp.__str__(), expected_value)
+
 if __name__ == '__main__':
     unittest.main()
