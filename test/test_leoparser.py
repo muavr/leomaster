@@ -29,5 +29,28 @@ class LeoParserTest(unittest.TestCase):
 
         self.assertEqual(lp._content, expected_value)
 
+    def test_parsing_currency(self):
+        lp = self.get_parser()
+        lp.load_from_file(self.TEST_DATA_PATH)
+        self.assertEqual((100, 0), lp.parse_currency('100 рублей'))
+        self.assertEqual((100, 77), lp.parse_currency('100 рублей 77 коп'))
+        self.assertEqual((100, 77), lp.parse_currency('100 рублей 77 коп.'))
+        self.assertEqual((100, 77), lp.parse_currency('100 рублей 77 копеек'))
+        self.assertEqual((100, 0), lp.parse_currency('100 руб'))
+        self.assertEqual((100, 0), lp.parse_currency('100 руб.'))
+        self.assertEqual((100, 77), lp.parse_currency('100 руб 77 коп'))
+        self.assertEqual((100, 77), lp.parse_currency('100 руб. 77 коп.'))
+        self.assertEqual((100, 77), lp.parse_currency('100 руб. 77 копеек'))
+        self.assertEqual((100, 0), lp.parse_currency('100рублей'))
+        self.assertEqual((100, 77), lp.parse_currency('100рублей 77коп'))
+        self.assertEqual((100, 77), lp.parse_currency('100рублей 77коп.'))
+        self.assertEqual((100, 77), lp.parse_currency('100рублей 77копеек'))
+        self.assertEqual((100, 0), lp.parse_currency('100руб'))
+        self.assertEqual((100, 0), lp.parse_currency('100руб.'))
+        self.assertEqual((100, 77), lp.parse_currency('100руб 77коп'))
+        self.assertEqual((100, 77), lp.parse_currency('100руб. 77коп.'))
+        self.assertEqual((100, 77), lp.parse_currency('100руб. 77копеек'))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -8,7 +8,7 @@ class Masterclass(object):
     def __init__(self, title: str = '', date: datetime = datetime.datetime.now(tz=None)):
         self.date = date
         self.title = title
-        self.location = Location()
+        self.location = ''
         self.description = ''
         self.duration = 0
         self.age_limit = 0
@@ -25,7 +25,7 @@ class Masterclass(object):
     def set_title(self, text: str):
         self.title = text
 
-    def set_location(self, location: Location):
+    def set_location(self, location):
         self.location = location
 
     def set_description(self, text: str):
