@@ -31,25 +31,26 @@ class LeoParserTest(unittest.TestCase):
 
     def test_parsing_currency(self):
         lp = self.get_parser()
-        lp.load_from_file(self.TEST_DATA_PATH)
         self.assertEqual((100, 0), lp.parse_currency('100 рублей'))
-        self.assertEqual((100, 77), lp.parse_currency('100 рублей 77 коп'))
-        self.assertEqual((100, 77), lp.parse_currency('100 рублей 77 коп.'))
-        self.assertEqual((100, 77), lp.parse_currency('100 рублей 77 копеек'))
         self.assertEqual((100, 0), lp.parse_currency('100 руб'))
-        self.assertEqual((100, 0), lp.parse_currency('100 руб.'))
-        self.assertEqual((100, 77), lp.parse_currency('100 руб 77 коп'))
-        self.assertEqual((100, 77), lp.parse_currency('100 руб. 77 коп.'))
-        self.assertEqual((100, 77), lp.parse_currency('100 руб. 77 копеек'))
+        self.assertEqual((90, 0), lp.parse_currency('90 р'))
         self.assertEqual((100, 0), lp.parse_currency('100рублей'))
-        self.assertEqual((100, 77), lp.parse_currency('100рублей 77коп'))
-        self.assertEqual((100, 77), lp.parse_currency('100рублей 77коп.'))
-        self.assertEqual((100, 77), lp.parse_currency('100рублей 77копеек'))
         self.assertEqual((100, 0), lp.parse_currency('100руб'))
-        self.assertEqual((100, 0), lp.parse_currency('100руб.'))
-        self.assertEqual((100, 77), lp.parse_currency('100руб 77коп'))
-        self.assertEqual((100, 77), lp.parse_currency('100руб. 77коп.'))
-        self.assertEqual((100, 77), lp.parse_currency('100руб. 77копеек'))
+        self.assertEqual((90, 0), lp.parse_currency('90р'))
+
+    def test_parsing_duration(self):
+        lp = self.get_parser()
+        self.assertEqual(0, lp.parse_duration('1'))
+        self.assertEqual(0, lp.parse_duration('0 ч'))
+        self.assertEqual(3600, lp.parse_duration('1 ч'))
+        self.assertEqual(3600, lp.parse_duration('1 час'))
+        self.assertEqual(10800, lp.parse_duration('3 часа'))
+        self.assertEqual(18000, lp.parse_duration('5 часов'))
+
+    def test_parsing_date(self):
+        pass
+
+
 
 
 if __name__ == '__main__':

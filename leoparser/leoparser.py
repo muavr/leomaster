@@ -8,15 +8,11 @@ import datetime
 
 class LeoParser(object):
     CURRENCY_PATTERNS = [
-            re.compile('^(\d+)\s*рублей()$', re.UNICODE),
-            re.compile('^(\d+)\s*руб[\.]?()$', re.UNICODE),
+            re.compile('^(\d+)\s*р', re.UNICODE),
         ]
 
     DURATION_PATTERNS = [
-            re.compile('(\d+)\s*час()', re.UNICODE),
-            re.compile('(\d+)\s*ч[\.]?()', re.UNICODE),
-            re.compile('(\d+)\s*час.*?\s+(\d+)\s*мин', re.UNICODE),
-            re.compile('(\d+)\s*ч.*?\s+(\d+)\s*м', re.UNICODE),
+            re.compile('(\d+)\s*ч', re.UNICODE),
         ]
 
     def __init__(self):
@@ -57,6 +53,7 @@ class LeoParser(object):
                 print('age_limit = %d' % age_limit)
                 owner_name = self.extract_owner_name(section)
                 print('owner_name = %s' % owner_name)
+
     @staticmethod
     def extract_int(section, xpath):
         value = 0
@@ -108,7 +105,6 @@ class LeoParser(object):
         match = self.get_first_math(self.CURRENCY_PATTERNS, value)
         if match:
             integer = self.convert_string_to_int_or_return_zero(match.group(1))
-            fraction = self.convert_string_to_int_or_return_zero(match.group(2))
         return integer, fraction
 
     def parse_duration(self, value):
@@ -118,8 +114,7 @@ class LeoParser(object):
         match = self.get_first_math(self.DURATION_PATTERNS, value)
         if match:
             hours = self.convert_string_to_int_or_return_zero(match.group(1))
-            minutes = self.convert_string_to_int_or_return_zero(match.group(2))
-            seconds = (hours * minutes_in_hours * seconds_in_minute) + (minutes * seconds_in_minute)
+            seconds = (hours * minutes_in_hours * seconds_in_minute)
         return seconds
 
     def extract_id(self, section):
