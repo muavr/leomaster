@@ -12,7 +12,9 @@ class LeoParser(object):
         ]
 
     DURATION_PATTERNS = [
+        re.compile('(\d+[\.,]\d+)\s*ч', re.UNICODE),
             re.compile('(\d+)\s*ч', re.UNICODE),
+
         ]
 
     def __init__(self):
@@ -31,6 +33,9 @@ class LeoParser(object):
             section_id = self.extract_id(section)
             if section_id:
                 print('id = %s' % section_id)
+                shortened_version = self.shortened_version(section)
+                print('shortened version = %s' % ('False', 'True')[shortened_version])
+
                 title = self.extract_title(section)
                 print('title = %s' % title)
                 location = self.extract_location(section)
@@ -64,12 +69,31 @@ class LeoParser(object):
         return value
 
     @staticmethod
+    def extract_list(section, xpath, arg_type: type =str):
+        item_list = list()
+        parse_result = section.xpath(xpath)
+        for item in parse_result:
+            item_list.append(arg_type(item))
+        return item_list
+
+    @staticmethod
     def convert_string_to_int_or_return_zero(value):
         try:
             match = re.search('\d+', value)
             if match:
                 value = match.group(0)
             value = int(value)
+        except Exception:
+            return 0
+        return value
+
+    @staticmethod
+    def convert_string_to_float_or_return_zero(value):
+        try:
+            match = re.search('\d+[\.,]\d+', value)
+            if match:
+                value = match.group(0)
+            value = float(value.replace(',', '.'))
         except Exception:
             return 0
         return value
@@ -113,13 +137,17 @@ class LeoParser(object):
         seconds = 0
         match = self.get_first_math(self.DURATION_PATTERNS, value)
         if match:
-            hours = self.convert_string_to_int_or_return_zero(match.group(1))
+            hours = self.convert_string_to_float_or_return_zero(match.group(1))
             seconds = (hours * minutes_in_hours * seconds_in_minute)
         return seconds
 
     def extract_id(self, section):
-        section_id = self.extract_int(section, '(.//@id)[2]')
+        section_id = self.extract_string(section, '(./@id)[1]')
         return section_id
+
+    def shortened_version(self, section):
+        items = self.extract_list(section, './/table[@class="mk_description"]/tbody/tr/td[2]')
+        return len(items) < 7
 
     def extract_title(self, section):
         title = self.extract_string(section, './/div[@class="mk_fulltitle"]//text()')
@@ -137,7 +165,7 @@ class LeoParser(object):
         return local_date
 
     def extract_description(self, section):
-        description = self.extract_string(section, './/div[@class="col-xs-12 col-sm-8 mk-leftcol"][2]/p//text()[1]')
+        description = self.extract_string(section, './/div[contains(@class, "col-xs-12") and contains(@class, "col-sm-8") and contains(@class, "mk-leftcol")]/p//text()')
         return description
 
     def extract_age_limit(self, section):
@@ -150,7 +178,7 @@ class LeoParser(object):
         return name
 
     def extract_duration(self, section):
-        duration = self.extract_string(section, './/div[@class="col-xs-12 col-sm-8 mk-leftcol"][2]/p//text()[3]')
+        duration = self.extract_string(section, './/table[@class="mk_description"]/tbody/tr[3]/td[2]//text()')
         duration = self.parse_duration(duration)
         return duration
 
@@ -179,5 +207,6 @@ class LeoParser(object):
 
 if __name__ == '__main__':
         lp = LeoParser()
-        lp.load_from_file('../test/data/leo_page_content.html')
+        # lp.load_from_file('../test/data/leo_page_content.html')
+        lp.load_from_file('../test/data/leo_page_content_201805.html')
         lp.parse()

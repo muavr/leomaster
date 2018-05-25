@@ -46,6 +46,8 @@ class LeoParserTest(unittest.TestCase):
         self.assertEqual(3600, lp.parse_duration('1 час'))
         self.assertEqual(10800, lp.parse_duration('3 часа'))
         self.assertEqual(18000, lp.parse_duration('5 часов'))
+        self.assertEqual(5400, lp.parse_duration('1.5 ч'))
+        self.assertEqual(5400, lp.parse_duration('1,5 ч'))
 
     def test_parsing_date(self):
         pass
