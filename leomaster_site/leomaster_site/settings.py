@@ -17,6 +17,9 @@ from .settings_local import *
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.0/howto/deployment/checklist/
 
+# custom user model
+AUTH_USER_MODEL = 'leomaster_app.User'
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -32,6 +35,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'leomaster_app'
 ]
 
 MIDDLEWARE = [
