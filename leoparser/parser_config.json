@@ -1,0 +1,106 @@
+{
+  "xpaths": {
+    "sections": {
+      "xpath": "//div[contains(@class, 'masterclass clearfix')]",
+      "type": "htmlElement",
+      "args": [],
+      "kwargs": {}
+    },
+    "id": {
+      "xpath": "string((./@id)[1])",
+      "type": "string",
+      "args": [],
+      "kwargs": {}
+    },
+    "title": {
+      "xpath": "string(.//div[@class='mk_fulltitle']//text())",
+      "type": "string",
+      "args": [],
+      "kwargs": {}
+    },
+    "description": {
+      "xpath": "string(.//div[contains(@class, 'col-xs-12') and contains(@class, 'col-sm-8') and contains(@class, 'mk-leftcol')]/p//text())",
+      "type": "string",
+      "args": [],
+      "kwargs": {}
+    },
+    "date": {
+      "xpath": "string(.//div[@class='mk_time']//text())",
+      "type": "dateTime",
+      "args": [],
+      "kwargs": {"tz": "Europe/Moscow"}
+    },
+    "duration": {
+      "xpath": "concat(substring(.//table[@class='mk_description']/tbody/tr[3]/td[2]//text(), 1, number(count(.//table[@class='mk_description']/tbody/tr[7])=1) * string-length(.//table[@class='mk_description']/tbody/tr[3]/td[2]//text())), substring('0ч', 1, number(not(count(.//table[@class='mk_description']/tbody/tr[7])=1)) * 2))",
+      "type": "duration",
+      "args": [],
+      "kwargs": {}
+    },
+    "age_restriction": {
+      "xpath": "string(.//table[@class='mk_description']/tbody/tr[1]/td[2]//text())",
+      "type": "string",
+      "args": [],
+      "kwargs": {}
+    },
+    "master": {
+      "xpath": "string(.//table[@class='mk_description']/tbody/tr[2]/td[2]//text())",
+      "type": "string",
+      "args": [],
+      "kwargs": {}
+    },
+    "total_seats": {
+      "xpath": "string(.//tbody/tr/td[@class='p-count__cell']//text())",
+      "type": "integer",
+      "args": [],
+      "kwargs": {}
+    },
+    "avail_seats": {
+      "xpath": "string(.//tbody/tr/td[@class='free-place_cell']//text())",
+      "type": "integer",
+      "args": [],
+      "kwargs": {}
+    },
+    "price": {
+      "xpath": "string(.//tbody/tr/td[contains(text(),  'в магазине')]/following-sibling::td//text())",
+      "type": "currency",
+      "args": [],
+      "kwargs": {}
+    },
+    "online_price": {
+      "xpath": "string(.//tbody/tr[last()]/td[2]//text())",
+      "type": "currency",
+      "args": [],
+      "kwargs": {}
+    },
+    "location": {
+      "xpath": "string(.//div[@class='mk_place']/a//text())",
+      "type": "string",
+      "args": [],
+      "kwargs": {}
+    },
+    "max_complexity": {
+      "xpath": "string(count(.//tbody/tr/td/div[contains(@class, 'complexity-level')]/span))",
+      "type": "integer",
+      "args": [],
+      "kwargs": {}
+    },
+    "complexity": {
+      "xpath": "string(count(.//tbody/tr/td/div[contains(@class, 'complexity-level')]/span[@class = 'full']))",
+      "type": "integer",
+      "args": [],
+      "kwargs": {}
+    },
+    "preview_img_url": {
+      "xpath": "string(.//div[@class='mk_image']/a/@href)",
+      "type": "string",
+      "args": [],
+      "kwargs": {}
+    },
+    "img_url": {
+      "xpath": "string(.//div[@class='mk_image']/a/img/@src)",
+      "type": "string",
+      "args": [],
+      "kwargs": {}
+    }
+  }
+}
