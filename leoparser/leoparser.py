@@ -1,212 +1,241 @@
 # -*- coding: utf-8 -*-
 
 import re
+import sys
 import pytz
+import json
+import lxml
 import lxml.html
 import datetime
+from decimal import *
 
 
-class LeoParser(object):
-    CURRENCY_PATTERNS = [
-            re.compile('^(\d+)\s*р', re.UNICODE),
-        ]
+class ExtractionError(Exception):
+    def __init__(self, xpath, extracted, message='', *args, **kwargs):
+        self.message = message
+        self._extracted = extracted
+        self.xpath = xpath
 
-    DURATION_PATTERNS = [
-        re.compile('(\d+[\.,]\d+)\s*ч', re.UNICODE),
-            re.compile('(\d+)\s*ч', re.UNICODE),
+    @property
+    def extracted(self):
+        if isinstance(self._extracted, lxml.html.HtmlElement):
+            return self._extracted.xpath('string(.//text())')
+        return str(self._extracted)
 
-        ]
+    def __str__(self):
+        return '<ExtractionError>(xpath= "{0}", extracted= "{1}")'.format(self.xpath, self.extracted)
 
-    def __init__(self):
-        self._content = ''
 
-    def load_from_file(self, path: str):
-        with open(path, 'r', encoding='utf-8') as f_dsc:
-            self._content = f_dsc.read()
-            f_dsc.close()
+class EmptyExtractionError(ExtractionError):
+    def __init__(self, xpath, message='', *args, **kwargs):
+        super(EmptyExtractionError, self).__init__(xpath, '', message, *args, **kwargs)
 
-    def parse(self):
-        masterclasses = list()
-        sections = self.extract_sections()
+    def __str__(self):
+        return '<EmptyExtractionError>(xpath= "{0}")'.format(self.xpath)
 
-        for section in sections:
-            section_id = self.extract_id(section)
-            if section_id:
-                print('id = %s' % section_id)
-                shortened_version = self.shortened_version(section)
-                print('shortened version = %s' % ('False', 'True')[shortened_version])
 
-                title = self.extract_title(section)
-                print('title = %s' % title)
-                location = self.extract_location(section)
-                print('location = %s' % location)
-                date = self.extract_date(section)
-                print('date = %s' % date)
-                description = self.extract_description(section)
-                print('description = %s' % description)
-                total_seats = self.extract_total_seats(section)
-                print('total_seats = %s' % total_seats)
-                available_seats = self.extract_available_seats(section)
-                print('available_seats = %s' % available_seats)
-                on_spot_price = self.extract_on_spot_price(section)
-                print('on_spot_price = %d, %d' % on_spot_price)
-                online_price = self.extract_online_price(section)
-                print('online_price = %d, %d' % online_price)
-                duration = self.extract_duration(section)
-                print('duration = %s' % duration)
-                age_limit = self.extract_age_limit(section)
-                print('age_limit = %d' % age_limit)
-                owner_name = self.extract_owner_name(section)
-                print('owner_name = %s' % owner_name)
+class ParsingExtractionError(ExtractionError):
+    def __init__(self, xpath, extracted, patterns, message='', *args, **kwargs):
+        self._patterns = patterns
+        super(ParsingExtractionError, self).__init__(xpath, extracted, message, *args, **kwargs)
 
-    @staticmethod
-    def extract_int(section, xpath):
-        value = 0
-        parse_result = section.xpath(xpath)
-        if parse_result:
-            string_value = parse_result[0]
-            value = int(string_value)
-        return value
+    def __str__(self):
+        return '<ParsingExtractionError>(xpath= "{0}", extracted= "{1}"):\n{2}'.format(
+            self.xpath, self.extracted, '\t\n'.join(self.patterns))
 
-    @staticmethod
-    def extract_list(section, xpath, arg_type: type =str):
-        item_list = list()
-        parse_result = section.xpath(xpath)
-        for item in parse_result:
-            item_list.append(arg_type(item))
-        return item_list
+    @property
+    def patterns(self):
+        if self._patterns:
+            if isinstance(self._patterns[0], type(re.compile(''))):
+                return ('/' + str(p.pattern) + '/' for p in self._patterns)
+            else:
+                return ('"' + str(p) + '"' for p in self._patterns)
+        return tuple()
 
-    @staticmethod
-    def convert_string_to_int_or_return_zero(value):
+
+def find_first_match(f):
+    def wrapper(self, value: str):
+        match = self._get_first_math(self.REGEX_PATTERNS, value)
+        if match:
+            return f(self, match.group(1))
+        raise ParsingExtractionError(self._xpath, value, self.REGEX_PATTERNS)
+
+    return wrapper
+
+
+class FieldExtractor(object):
+    REGEX_PATTERNS = tuple()
+
+    def __init__(self, xpath: str):
+        self._xpath = xpath
+
+    def extract_from(self, section):
         try:
-            match = re.search('\d+', value)
-            if match:
-                value = match.group(0)
-            value = int(value)
-        except Exception:
-            return 0
+            value = section.xpath(self._xpath)
+            if value:
+                return self._post_process(value)
+            raise EmptyExtractionError(self._xpath, '')
+        except lxml.etree.XPathEvalError as err:
+            raise ExtractionError(self._xpath, '') from err
+
+    def _post_process(self, value: str):
         return value
 
     @staticmethod
-    def convert_string_to_float_or_return_zero(value):
-        try:
-            match = re.search('\d+[\.,]\d+', value)
-            if match:
-                value = match.group(0)
-            value = float(value.replace(',', '.'))
-        except Exception:
-            return 0
-        return value
-
-    @staticmethod
-    def extract_string(section, xpath):
-        value = ''
-        parse_result = section.xpath(xpath)
-        if parse_result:
-            value = str(parse_result[0]).strip()
-        return value
-
-    @staticmethod
-    def get_first_math(patterns, value):
+    def _get_first_math(patterns, value):
         for regex in patterns:
             match = regex.search(value)
             if match:
                 return match
 
-    def extract_sections(self):
-        html = lxml.html.document_fromstring(self._content)
-        sections = html.xpath('//div[contains(@class, "masterclass clearfix")]')
-        return sections
 
-    def extract_currency(self, section, xpath):
-        parse_result = self.extract_string(section, xpath)
-        integer, fraction = self.parse_currency(parse_result)
-        return integer, fraction
+class StringFieldExtractor(FieldExtractor):
+    pass
 
-    def parse_currency(self, value):
-        integer = 0
-        fraction = 0
-        match = self.get_first_math(self.CURRENCY_PATTERNS, value)
-        if match:
-            integer = self.convert_string_to_int_or_return_zero(match.group(1))
-        return integer, fraction
 
-    def parse_duration(self, value):
-        seconds_in_minute = 60
-        minutes_in_hours = 60
-        seconds = 0
-        match = self.get_first_math(self.DURATION_PATTERNS, value)
-        if match:
-            hours = self.convert_string_to_float_or_return_zero(match.group(1))
-            seconds = (hours * minutes_in_hours * seconds_in_minute)
-        return seconds
+class IntFieldExtractor(FieldExtractor):
+    REGEX_PATTERNS = (
+        re.compile('(\d+)', re.UNICODE),
+    )
 
-    def extract_id(self, section):
-        section_id = self.extract_string(section, '(./@id)[1]')
-        return section_id
+    @find_first_match
+    def _post_process(self, value):
+        return int(value)
 
-    def shortened_version(self, section):
-        items = self.extract_list(section, './/table[@class="mk_description"]/tbody/tr/td[2]')
-        return len(items) < 7
 
-    def extract_title(self, section):
-        title = self.extract_string(section, './/div[@class="mk_fulltitle"]//text()')
-        return title
+class DateTimeFieldExtractor(FieldExtractor):
 
-    def extract_location(self, section):
-        return self.extract_string(section, './/div[@class="mk_place"]/a//text()')
+    def __init__(self, xpath: str, date_format: str = '%d.%m.%Y %H:%M', tz: str = 'Europe/Moscow'):
+        self._format = date_format
+        self._tz = tz
+        super(DateTimeFieldExtractor, self).__init__(xpath)
 
-    def extract_date(self, section):
-        string_date = self.extract_string(section, './/div[@class="mk_time"]//text()')
-        string_date = '{0} {2}'.format(*string_date.split())
-        date = datetime.datetime.strptime(string_date, '%d.%m.%Y %H:%M')
-        tz = pytz.timezone('Europe/Moscow')
-        local_date = tz.localize(date, is_dst=False)
-        return local_date
+    def _post_process(self, value: str):
+        """
+        Splits passed string and expect 3 parts.
+        Omits the {1} element it is a full day name
+        :param value:
+        :return:
+        """
+        try:
+            string_date = '{0} {2}'.format(*value.split())
+            date = datetime.datetime.strptime(string_date, self._format)
+            tz = pytz.timezone(self._tz)
+            return tz.localize(date, is_dst=False)
+        except ValueError:
+            raise ParsingExtractionError(self._xpath, value, [self._format])
 
-    def extract_description(self, section):
-        description = self.extract_string(section, './/div[contains(@class, "col-xs-12") and contains(@class, "col-sm-8") and contains(@class, "mk-leftcol")]/p//text()')
-        return description
 
-    def extract_age_limit(self, section):
-        age_limit = self.extract_string(section, './/table[@class="mk_description"]/tbody/tr[1]/td[2]//text()')
-        age_limit = self.convert_string_to_int_or_return_zero(age_limit)
-        return age_limit
+class CurrencyFieldExtractor(FieldExtractor):
+    REGEX_PATTERNS = (
+        re.compile('^(\d+)\s*р', re.UNICODE),
+    )
 
-    def extract_owner_name(self, section):
-        name = self.extract_string(section, './/table[@class="mk_description"]/tbody/tr[2]/td[2]//text()')
-        return name
+    @find_first_match
+    def _post_process(self, value):
+        return Decimal(value)
 
-    def extract_duration(self, section):
-        duration = self.extract_string(section, './/table[@class="mk_description"]/tbody/tr[3]/td[2]//text()')
-        duration = self.parse_duration(duration)
-        return duration
 
-    def extract_total_seats(self, section):
-        seats = self.extract_int(section, './/tbody/tr/td[@class="p-count__cell"]//text()')
-        return seats
+class DurationFieldExtractor(FieldExtractor):
+    """
+    Returns time in seconds.
+    :param field:
+    :return:
+    """
+    REGEX_PATTERNS = (
+        re.compile('(\d+(?:[\.,]\d+)?)\s*ч', re.UNICODE),
+    )
 
-    def extract_available_seats(self, section):
-        seats = self.extract_int(section, './/tbody/tr/td[@class="free-place_cell"]//text()')
-        return seats
+    @find_first_match
+    def _post_process(self, value):
+        value = str(value).replace(',', '.')
+        return int(Decimal(value) * 60 * 60)
 
-    def extract_online_price(self, section):
-        price = self.extract_currency(section, './/tbody/tr[last()]/td[2]//text()')
-        return price[0], price[1]
 
-    def extract_on_spot_price(self, section):
-        title = self.extract_string(section, './/tbody/tr[last()-1]/td[1]//text()')
-        if 'в магазине' in title:
-            price = self.extract_currency(section, './/tbody/tr[last()-1]/td[2]//text()')
-            return price[0], price[1]
+class LeoParser(object):
+    def __init__(self, xpath):
+        self._xpath = xpath
+        self._extractors = dict()
+
+    def parse_to_dict(self, content):
+        html = lxml.html.document_fromstring(content)
+        sections = html.xpath(self._xpath)
+        returning_dict = dict()
+
+        for section in sections:
+            master_class = dict()
+            for field, extractor in self._extractors.items():
+                try:
+                    master_class[field] = extractor.extract_from(section)
+                except ExtractionError as err:
+                    print(err, sys.stderr)
+                    raise err
+            returning_dict[master_class.get('id')] = master_class
+
+        return returning_dict
+
+    def parse_to_json(self, content, prettify=False):
+        parsed_dict = self.parse_to_dict(content)
+        if prettify:
+            return json.dumps(parsed_dict, default=str, indent=4)
         else:
-            return self.extract_online_price(section)
+            return json.dumps(parsed_dict, default=str)
 
-    def __str__(self):
-        return '<LeoParser ({})>'.format(hex(id(self)))
+    def parse_to_text(self, content):
+        parsed_dict = self.parse_to_dict(content)
+        returning_string = ''
+
+        for mc_id in parsed_dict:
+            mc_dict = parsed_dict[mc_id]
+            for field, value in mc_dict.items():
+                returning_string += '{0}= {1}\n'.format(field, value)
+            returning_string += '=' * 20 + '\n'
+        return returning_string
+
+    def register_extractor(self, field_name, extractor):
+        self._extractors[field_name] = extractor
+
+
+class LeoParserFabric:
+    def __init__(self, config: dict):
+        self._config = config
+        self._extractors = {
+            'string': StringFieldExtractor,
+            'integer': IntFieldExtractor,
+            'dateTime': DateTimeFieldExtractor,
+            'currency': CurrencyFieldExtractor,
+            'duration': DurationFieldExtractor
+        }
+
+    def create_parser(self):
+        xpath_sections = self._config.get('xpaths').pop('sections').get('xpath')
+
+        parser = LeoParser(xpath_sections)
+        for name, extractor in self._config.get('xpaths').items():
+            extractor_class = self._extractors.get(extractor.get('type'))
+            args = extractor.get('args')
+            kwargs = extractor.get('kwargs')
+            extractor_xpath = extractor.get('xpath')
+            parser.register_extractor(name, extractor_class(extractor_xpath, *args, **kwargs))
+        return parser
+
 
 if __name__ == '__main__':
-        lp = LeoParser()
-        # lp.load_from_file('../test/data/leo_page_content.html')
-        lp.load_from_file('../test/data/leo_page_content_201805.html')
-        lp.parse()
+    content_path = '../test/data/leo_page_content_201805.html'
+    config_path = './parser_config.json'
+
+    with open(content_path, 'r', encoding='utf8') as f_dsc:
+        content = f_dsc.read()
+        f_dsc.close()
+
+    with open(config_path, 'r', encoding='utf8') as f_dsc:
+        config = f_dsc.read()
+        f_dsc.close()
+
+    config_dict = json.loads(config)
+
+    lp_fabric = LeoParserFabric(config_dict)
+
+    lp = lp_fabric.create_parser()
+
+    print(lp.parse_to_json(content, prettify=True))
