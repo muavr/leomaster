@@ -1,5 +1,6 @@
 #local
 leomaster.db
+celeryconfig_local.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
