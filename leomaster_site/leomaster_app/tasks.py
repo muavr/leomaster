@@ -1,8 +1,10 @@
 import json
 import requests
 import fake_useragent
+import celery.signals
 
 from celery.utils.log import get_task_logger
+from logging.handlers import TimedRotatingFileHandler
 
 from leomaster_app.models import *
 from leomaster_app.settings import *
@@ -12,6 +14,19 @@ from leoparser.leoparser import LeoParserFabric
 CONTENT_URL = 'https://leonardo.ru/masterclasses/petersburg/'
 
 logger = get_task_logger(__name__)
+
+
+@celery.signals.after_setup_task_logger.connect
+def on_after_setup_task_logger(**kwargs):
+    def_logger = kwargs.get('logger', None)
+    if def_logger:
+        stream_handler = def_logger.handlers[1]
+        def_logger.removeHandler(stream_handler)
+        time_rot_fh = TimedRotatingFileHandler(filename=LEO_TASK_LOG_PATH, encoding='utf-8',
+                                               when='d', interval=10, backupCount=15)
+        time_rot_fh.setLevel(LEO_TASK_LOG_LEVEL)
+        time_rot_fh.setFormatter(stream_handler.formatter)
+        def_logger.addHandler(time_rot_fh)
 
 
 @app.task(bind=True)
