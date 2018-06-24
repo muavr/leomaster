@@ -1,6 +1,7 @@
 #local
 leomaster.db
 celeryconfig_local.py
+*.log.[0-9]*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
