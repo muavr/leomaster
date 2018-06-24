@@ -153,7 +153,8 @@ class DurationFieldExtractor(FieldExtractor):
 
 
 class LeoParser(object):
-    def __init__(self, xpath):
+    def __init__(self, xpath, key_field):
+        self._key_field = key_field
         self._xpath = xpath
         self._extractors = dict()
 
@@ -170,7 +171,7 @@ class LeoParser(object):
                 except ExtractionError as err:
                     print(err, sys.stderr)
                     raise err
-            returning_dict[master_class.get('id')] = master_class
+            returning_dict[master_class.get(self._key_field)] = master_class
 
         return returning_dict
 
@@ -208,9 +209,11 @@ class LeoParserFabric:
         }
 
     def create_parser(self):
-        xpath_sections = self._config.get('xpaths').pop('sections').get('xpath')
+        sections_dsc = self._config.get('xpaths').pop('sections')
+        xpath_sections = sections_dsc.get('xpath')
+        key_field = sections_dsc.get('key_field')
 
-        parser = LeoParser(xpath_sections)
+        parser = LeoParser(xpath_sections, key_field)
         for name, extractor in self._config.get('xpaths').items():
             extractor_class = self._extractors.get(extractor.get('type'))
             args = extractor.get('args')

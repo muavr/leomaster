@@ -4,9 +4,10 @@
       "xpath": "//div[contains(@class, 'masterclass clearfix')]",
       "type": "htmlElement",
       "args": [],
-      "kwargs": {}
+      "kwargs": {},
+      "key_field": "uid"
     },
-    "id": {
+    "uid": {
       "xpath": "string((./@id)[1])",
       "type": "string",
       "args": [],
