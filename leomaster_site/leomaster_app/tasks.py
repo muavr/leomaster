@@ -1,6 +1,7 @@
 import pytz
 import time
 import json
+import random
 import requests
 import celery.signals
 
@@ -37,6 +38,8 @@ def on_after_setup_task_logger(**kwargs):
 
 @app.task(bind=True, ignore_result=True)
 def update(self):
+    random.seed()
+    time.sleep(random.randint(0, 120))
     logger.info('Starting update task')
     user_agent = fake_useragent.UserAgent()
     current_agent = user_agent.random
