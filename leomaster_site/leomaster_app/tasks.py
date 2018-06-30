@@ -41,7 +41,8 @@ def update(self):
     random.seed()
     time.sleep(random.randint(0, 120))
     logger.info('Starting update task')
-    user_agent = fake_useragent.UserAgent()
+    user_agent = fake_useragent.UserAgent(fallback=LEO_DEFAULT_USER_AGENT,
+                                          path=LEO_FAKE_USER_AGENT_CACHE)
     current_agent = user_agent.random
     logger.info('Current user agent: {0}'.format(current_agent))
 
