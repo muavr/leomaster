@@ -29,7 +29,6 @@ class LeoBot:
 
 if '__main__' == __name__:
     bot = LeoBot(token=LEO_TELEGRAM_BOT_TOKEN)
-    print(bot.send_message('@Leomaster-test', 'test', mode='').json())
     print('LeoBot started')
     try:
         update_id = 0
