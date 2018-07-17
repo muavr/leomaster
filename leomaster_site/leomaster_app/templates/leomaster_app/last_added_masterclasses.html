@@ -46,12 +46,15 @@
                             <p><img src="https:{{ mc.preview_img_url }}" alt="{{ mc.title }}"
                                     class="img-thumbnail rounded-0"></p>
                             <dev class="mc-detail">
+                                <p><i class="icon fa fa-map-marker fa-fw" aria-hidden="true"></i> {{ mc.location.name }}</p>
+                                <p><i class="icon fa fa-user fa-fw"></i> {{ mc.master.name }}</p>
                                 <p><i class="icon fa fa-rub fa-fw"
                                       aria-hidden="true"></i> {{ mc.online_price|floatformat:2 }}
                                     / {{ mc.price|floatformat:2 }}
                                 </p>
                                 <p><i class="icon fa fa-users fa-fw" aria-hidden="true"></i> {{ mc.avail_seats }}
                                     из {{ mc.total_seats }}</p>
+                                <p><i class="icon fa fa-hourglass-half fa-fw"></i> {{ mc.duration|time }}</p>
                                 <p><i class="icon fa fa-warning fa-fw"
                                       aria-hidden="true"></i> {{ mc.age_restriction }}
                                 </p>
