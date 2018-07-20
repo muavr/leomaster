@@ -5,6 +5,8 @@ import random
 import requests
 import celery.signals
 
+from django.conf import settings
+from datetime import datetime, timedelta
 from django.template import loader
 from django.utils import translation
 from django.utils.formats import date_format
@@ -88,11 +90,70 @@ def update(self):
         if not Masterclass.objects.filter(uid=key).exists():
             mc = Masterclass.objects.create(**body, master=master, location=location)
             logger.info('New masterclass was added: "{0}"'.format(mc.uid))
+            download_images.delay(mc.id)
             notify.delay(mc.id)
         else:
             logger.info('Masterclass already exists: "{0}"'.format(key))
 
     logger.info('Update task finished%s%s%s' % ('\n', '=' * 25, '\n'))
+
+
+def download_image(url, http_headers, web_session):
+    request = requests.Request('GET', url, headers=http_headers)
+    prepared_request = request.prepare()
+    logger.info('Downloading image (url: "{0}")'.format(url))
+    response = web_session.send(prepared_request)
+    if response.status_code == 200:
+        return response.content
+    return None
+
+
+def save_binary(content, path):
+    with open(path, 'wb') as f:
+        f.write(content)
+        f.close()
+
+
+@app.task(bind=True, max_retries=0, ignore_result=True)
+def update_images(self):
+    _2_month_ago = datetime.today() - timedelta(days=30)
+    masterclasses = Masterclass.objects.all().filter(creation_ts__gte=_2_month_ago)
+    for mc in masterclasses:
+        download_images.delay(mc.id)
+
+
+@app.task(bind=True, max_retries=1, ignore_result=True, default_retry_delay=60*2.5)
+def download_images(self, mc_id):
+    logger.info('Starting download task')
+    logger.info('Downloading images for masterclass id= {0}'.format(mc_id))
+    user_agent = fake_useragent.UserAgent(fallback=LEO_DEFAULT_USER_AGENT,
+                                          path=LEO_FAKE_USER_AGENT_CACHE)
+    current_agent = user_agent.random
+    logger.info('Current user agent: {0}'.format(current_agent))
+
+    http_headers = {'User-Agent': current_agent}
+    web_session = requests.Session()
+
+    mc = Masterclass.objects.get(pk=mc_id)
+    target_dir = os.path.join(settings.MEDIA_ROOT, settings.DOWNLOAD_IMG_DIR)
+    logger.debug('Target directory is "{0}"'.format(target_dir))
+
+    try:
+        url = 'https:' + mc.img_url
+        img_content = download_image(url, http_headers, web_session)
+        img_path = os.path.join(target_dir, '{0}.jpeg'.format(mc.uid))
+        save_binary(img_content, img_path)
+
+        url = 'https:' + mc.preview_img_url
+        img_content = download_image(url, http_headers, web_session)
+        img_path = os.path.join(target_dir, '{0}_preview.jpeg'.format(mc.uid))
+        save_binary(img_content, img_path)
+
+    except requests.RequestException as err:
+        print(err)
+        logger.exception(err)
+        logger.warning('Task will be retried after {0} sec'.format(LEO_RETRY_DELAY))
+        raise self.retry(exc=err, countdown=LEO_RETRY_DELAY)
 
 
 @app.task(bind=True, max_retries=20, ignore_result=True, default_retry_delay=60*2.5)
@@ -113,4 +174,3 @@ def notify(self, mc_id):
                'target': CONTENT_URL}
     rendered = template.render(context=context)
     leobot.send_message(LEO_TELEGRAM_CHAT_ID, rendered)
-

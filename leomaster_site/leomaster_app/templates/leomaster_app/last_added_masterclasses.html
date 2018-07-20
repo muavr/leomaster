@@ -10,7 +10,7 @@
                  style="width: 100%;">
                 <div class="card-body d-flex flex-column">
                     <img data-toggle="modal" data-target="#mcDescription_{{ mc.uid }}"
-                         src="https:{{ mc.img_url }}" alt="{{ mc.title }}" class="img-thumbnail rounded-0">
+                         src="./media/downloads/img/{{ mc.uid }}.jpeg" alt="{{ mc.title }}" class="img-thumbnail rounded-0">
                     <h6 class="card-title">{{ mc.title }}</h6>
                     <div class="mc-short-description mt-auto text-left">
                         <hr>
@@ -43,7 +43,7 @@
                                        style="{% if forloop.counter > mc.complexity %}opacity: 0.4{% endif %}"></i>
                                 {% endfor %}</p>
                             </div>
-                            <p><img src="https:{{ mc.preview_img_url }}" alt="{{ mc.title }}"
+                            <p><img src="./media/downloads/img/{{ mc.uid }}_preview.jpeg" alt="{{ mc.title }}"
                                     class="img-thumbnail rounded-0"></p>
                             <dev class="mc-detail">
                                 <p><i class="icon fa fa-map-marker fa-fw" aria-hidden="true"></i> {{ mc.location.name }}</p>
