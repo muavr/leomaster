@@ -167,7 +167,7 @@ def notify(self, mc_id):
                'where': mc.location.name,
                'who': mc.master.name,
                'howmany': mc.avail_seats,
-               'preview': mc.img_url,
+               'preview': '//{0}/media/downloads/img/{1}_preview.jpeg'.format(settings.ALLOWED_HOSTS[0],  mc.uid),
                'online_price': mc.online_price,
                'price': mc.price,
                'description': mc.description,
