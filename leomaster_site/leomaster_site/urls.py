@@ -20,7 +20,7 @@ from django.urls import path
 from leomaster_app import views
 
 urlpatterns = [
-    path('', views.show_last_added_masterclasses),
+    path('', views.show_masterclasses, name='common', kwargs={'group': 'topic'}),
+    path('<group>/', views.show_masterclasses, name='common'),
     path('admin/', admin.site.urls),
-
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
