@@ -5,8 +5,8 @@
 {% block main %}
     <div class="menu-top">
         <a class="{% if group == 'topic' %}selected{% endif %}" href="{% url 'common' 'topic' %}">Актуальные</a>
-        <a class="{% if group == 'half_month' %}selected{% endif %}" href="{% url 'common' 'half_month' %}">За две недели</a>
-        <a class="{% if group == 'month' %}selected{% endif %}" href="{% url 'common' 'month' %}">За месяц</a>
+        <a class="{% if group == 'half_month' %}selected{% endif %}" href="{% url 'common' 'half_month' %}">Новые за две недели</a>
+        <a class="{% if group == 'month' %}selected{% endif %}" href="{% url 'common' 'month' %}">Новые за месяц</a>
         <a class="{% if group == 'all' %}selected{% endif %}" href="{% url 'common' 'all' %}">Все</a>
     </div>
     {% for mc in masterclasses %}
