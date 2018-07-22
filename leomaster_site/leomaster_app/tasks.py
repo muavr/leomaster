@@ -93,6 +93,8 @@ def update(self):
             download_images.delay(mc.id)
             notify.delay(mc.id)
         else:
+            body.pop('uid')
+            Masterclass.objects.filter(uid=key).update(**body, master=master, location=location)
             logger.info('Masterclass already exists: "{0}"'.format(key))
 
     logger.info('Update task finished%s%s%s' % ('\n', '=' * 25, '\n'))
