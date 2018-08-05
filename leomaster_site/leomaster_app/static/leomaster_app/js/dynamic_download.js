@@ -1,4 +1,5 @@
 let url = '/api/masterclasses/';
+let inProcess = false;
 
 function printDateTime(stringDate) {
     let date = new Date(stringDate);
@@ -51,13 +52,14 @@ function toTime(seconds) {
 }
 
 function download() {
-    if (url) {
+    if (url && !inProcess) {
         $.ajax({
             url: url,
             method: 'GET',
             dataType: 'json',
             beforeSend: function () {
                 $('.loader').removeClass('hidden');
+                inProcess = true;
             }
         })
         .done(function (data) {
@@ -120,6 +122,7 @@ function download() {
         })
         .always(function () {
             $('.loader').addClass('hidden');
+            inProcess = false;
         })
     }
 }
