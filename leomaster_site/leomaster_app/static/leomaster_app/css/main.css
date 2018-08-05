@@ -332,3 +332,14 @@ hr {
     }
 }
 
+.hidden {
+    display: none;
+}
+
+.loader {
+    margin: 25px auto;
+    text-align: center;
+    color: var(--primary-color);
+    font-size: 1em;
+}
+

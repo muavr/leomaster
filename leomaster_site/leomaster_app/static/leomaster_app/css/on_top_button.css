@@ -22,7 +22,7 @@
     opacity: 0.4;
     transition: opacity 1s;
 }
-.slow-hidden {
+.slow-hidden, #onTopBtn:hover.slow-hidden {
     visibility: hidden;
     opacity: 0;
     transition: opacity 1s, visibility 1s linear;
