@@ -3,81 +3,15 @@
 {% load static %}
 {% block title %}Мастерклассы{% endblock %}
 {% block main %}
+    <div id="pageGroup" data-group="{{ group }}"></div>
     <div class="menu-top">
         <a class="{% if group == 'topic' %}selected{% endif %}" href="{% url 'common' 'topic' %}">Актуальные</a>
         <a class="{% if group == 'half_month' %}selected{% endif %}" href="{% url 'common' 'half_month' %}">Новые за две недели</a>
         <a class="{% if group == 'month' %}selected{% endif %}" href="{% url 'common' 'month' %}">Новые за месяц</a>
         <a class="{% if group == 'all' %}selected{% endif %}" href="{% url 'common' 'all' %}">Все</a>
     </div>
-    {% for mc in masterclasses %}
-        <div class="grid-item">
-            <div class="card text-center rounded-0 mc-block {% if mc.avail_seats == 0 %} not-available {% endif %}
-{% if mc.date|date:'w' == '0' or mc.date|date:'w' == '6' %} holiday {% endif %}"
-                 style="width: 100%;">
-                <div class="card-body d-flex flex-column">
-                    <img data-toggle="modal" data-target="#mcDescription_{{ mc.uid }}"
-                         src="/media/downloads/img/{{ mc.uid }}.jpeg" alt="{{ mc.title }}" class="img-thumbnail rounded-0">
-                    <h6 class="card-title">{{ mc.title }}</h6>
-                    <div class="mc-short-description mt-auto text-left">
-                        <hr>
-                        <i class="icon fa fa-clock-o fa-fw"
-                           aria-hidden="true"></i> {{ mc.date|date:"d-m-Y H:i" }}<br>
-                        <i class="icon fa fa-calendar fa-fw" aria-hidden="true"></i> {{ mc.date|date:"l" }}<br>
-                        <i class="icon fa fa-rub fa-fw"
-                           aria-hidden="true"></i> {{ mc.online_price|floatformat:2 }}<br>
-                        <i class="icon fa fa-users fa-fw" aria-hidden="true"></i> {{ mc.avail_seats }}
-                    </div>
-                </div>
-            </div>
-            <div class="modal fade" id="mcDescription_{{ mc.uid }}" tabindex="-1" role="dialog"
-                 aria-labelledby="mcDescription_{{ mc.uid }}Title" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered" role="document">
-                    <div class="modal-content rounded-0">
-                        <div class="modal-header text-left">
-                            <h5 class="modal-title"
-                                id="mcDescription_{{ mc.uid }}Title">{{ mc.title }}</h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-
-                        <div class="modal-body text-justify">
-                            <div class="clearfix">
-                                <p class="float-left">{{ mc.date|date:"d-m-Y H:i, l" }}</p>
-                                <p class="float-right">{% for i in 'x'|repeat:mc.max_complexity %}
-                                    <i class="icon fa fa-paint-brush fa-fw"
-                                       style="{% if forloop.counter > mc.complexity %}opacity: 0.4{% endif %}"></i>
-                                {% endfor %}</p>
-                            </div>
-                            <p><img src="/media/downloads/img/{{ mc.uid }}_preview.jpeg" alt="{{ mc.title }}"
-                                    class="img-thumbnail rounded-0"></p>
-                            <dev class="mc-detail">
-                                <p><i class="icon fa fa-map-marker fa-fw" aria-hidden="true"></i> {{ mc.location.name }}</p>
-                                <p><i class="icon fa fa-user fa-fw"></i> {{ mc.master.name }}</p>
-                                <p><i class="icon fa fa-rub fa-fw"
-                                      aria-hidden="true"></i> {{ mc.online_price|floatformat:2 }}
-                                    / {{ mc.price|floatformat:2 }}
-                                </p>
-                                <p><i class="icon fa fa-users fa-fw" aria-hidden="true"></i> {{ mc.avail_seats }}
-                                    из {{ mc.total_seats }}</p>
-                                <p><i class="icon fa fa-hourglass-half fa-fw"></i> {{ mc.duration|time }}</p>
-                                <p><i class="icon fa fa-warning fa-fw"
-                                      aria-hidden="true"></i> {{ mc.age_restriction }}
-                                </p>
-                            </dev>
-                            <hr>
-                            {{ mc.description }}
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary rounded-0" data-dismiss="modal">
-                                Ладно
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    {% endfor %}
-
 {% endblock %}
 
+{% block footer %}
+    <div class="loader hidden">Загрузка...</div>
+{% endblock %}

@@ -21,6 +21,7 @@ from leomaster_app import views
 
 urlpatterns = [
     path('', views.show_masterclasses, name='common', kwargs={'group': 'topic'}),
+    path('api/masterclasses/<group>/', views.MasterclassViewSet.as_view({'get': 'list'})),
     path('<group>/', views.show_masterclasses, name='common'),
     path('admin/', admin.site.urls),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
