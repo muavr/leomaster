@@ -95,6 +95,7 @@ def update(self):
             notify.apply_async(args=(mc.id,), queue='notifications')
         else:
             body.pop('uid')
+            body = {key: value for key, value in body.items() if value not in {'', 0, None}}
             Masterclass.objects.filter(uid=key).update(**body, master=master, location=location)
             logger.info('Masterclass already exists: "{0}"'.format(key))
 
