@@ -158,9 +158,11 @@ def download_images(self, mc_id):
         raise self.retry(exc=err, countdown=LEO_RETRY_DELAY)
 
 
-@app.task(bind=True, max_retries=20, ignore_result=True, default_retry_delay=60*2.5)
+@app.task(bind=True, max_retries=LEO_NOTIFICATION_MAX_RETRIES, ignore_result=True)
 def notify(self, mc_id):
-    translation.activate('ru')
+    lang = 'ru'
+    logger.info('Mc {0}: Notify about masterclass'.format(mc_id))
+    translation.activate(lang)
     leobot = LeoBot(LEO_TELEGRAM_BOT_TOKEN)
     mc = Masterclass.objects.get(pk=mc_id)
     template = loader.get_template('leomaster_app/telegram_notification.html')
@@ -174,5 +176,13 @@ def notify(self, mc_id):
                'price': mc.price,
                'description': mc.description,
                'target': CONTENT_URL}
+    logger.debug('Mc {0}: Template context: {1}'.format(mc_id, context))
     rendered = template.render(context=context)
-    leobot.send_message(LEO_TELEGRAM_CHAT_ID, rendered)
+    try:
+        logger.debug('Mc {0}: Try send message'.format(mc_id))
+        leobot.send_message(LEO_TELEGRAM_CHAT_ID, rendered)
+    except Exception as err:
+        logger.warning('Mc {0}: Error occurred while trying to send message: {1}'.format(mc_id, err))
+        logger.warning('Mc {0}: Task "notify" will be retry (attempt {1} of {2})'.format(
+            mc_id, self.request.retries, LEO_NOTIFICATION_MAX_RETRIES))
+        raise self.retry(exc=err, countdown=(2 ** self.request.retries) * LEO_RETRY_DELAY)
