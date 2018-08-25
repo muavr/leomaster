@@ -38,11 +38,11 @@ def on_after_setup_task_logger(**kwargs):
         def_logger.addHandler(time_rot_fh)
 
 
-@app.task(bind=True, ignore_result=True)
+@app.task(bind=True, max_retries=LEO_UPDATE_MAX_RETRIES, ignore_result=True)
 def update(self):
     random.seed()
     time.sleep(random.randint(0, 120))
-    logger.info('Starting update task')
+    logger.info('>>>>> Starting update task')
     user_agent = fake_useragent.UserAgent(fallback=LEO_DEFAULT_USER_AGENT,
                                           path=LEO_FAKE_USER_AGENT_CACHE)
     current_agent = user_agent.random
@@ -54,11 +54,12 @@ def update(self):
     prepared_request = web_request.prepare()
     logger.info('Executing HTTP request (url: "{0}")'.format(CONTENT_URL))
     try:
-        response = web_session.send(prepared_request)
+        response = web_session.send(prepared_request, timeout=LEO_TASK_TIMEOUT)
     except requests.RequestException as err:
-        logger.exception(err)
-        logger.warning('Task will be retried after {0} sec'.format(LEO_RETRY_DELAY))
-        raise self.retry(exc=err, countdown=LEO_RETRY_DELAY)
+        logger.exception('Error occurred while trying to update masterclasses: {0}'.format(err))
+        logger.warning('Task "download_images" will be retry (attempt {0} of {1})'.format(
+            self.request.retries, LEO_DOWNLOAD_MAX_RETRIES))
+        raise self.retry(exc=err, countdown=(2 ** self.request.retries) * LEO_RETRY_DELAY)
 
     logger.info('Open parser config file: "{0}"'.format(LEO_PARSER_CONFIG_PATH))
     with open(LEO_PARSER_CONFIG_PATH, 'r', encoding='utf8') as f_dsc:
@@ -90,8 +91,8 @@ def update(self):
         if not Masterclass.objects.filter(uid=key).exists():
             mc = Masterclass.objects.create(**body, master=master, location=location)
             logger.info('New masterclass was added: "{0}"'.format(mc.uid))
-            download_images.delay(mc.id)
-            notify.delay(mc.id)
+            download_images.apply_async(args=(mc.id,), queue='downloads')
+            notify.apply_async(args=(mc.id,), queue='notifications')
         else:
             body.pop('uid')
             Masterclass.objects.filter(uid=key).update(**body, master=master, location=location)
