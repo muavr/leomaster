@@ -95,7 +95,7 @@ def update(self):
             notify.apply_async(args=(mc.id,), queue='notifications')
         else:
             body.pop('uid')
-            if body.get('duration', 0):
+            if body.get('duration') == 0:
                 body.pop('duration')
             body = {key: value for key, value in body.items() if value not in {'', None}}
             Masterclass.objects.filter(uid=key).update(**body, master=master, location=location)
