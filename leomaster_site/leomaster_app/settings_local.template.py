@@ -6,6 +6,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'leomaster_site.settings')
 LEO_TELEGRAM_MODE = 'HTML'
 LEO_TELEGRAM_BOT_TOKEN = '<token>'
 LEO_TELEGRAM_CHAT_ID = '<chat_id>'
+LEO_TELEGRAM_ADMIN_CHAT_ID = '<admin_chat_id>'
 LEO_TASK_LOG_PATH = '../log/task.log'
 LEO_TASK_LOG_LEVEL = 'DEBUG'
 LEO_PARSER_CONFIG_PATH = os.path.join(settings.BASE_DIR, '../leoparser/parser_config.json')
