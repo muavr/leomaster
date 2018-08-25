@@ -1,0 +1,29 @@
+#onTopBtn {
+    position: fixed;
+    bottom: 20px;
+    right: 30px;
+    z-index: 99;
+    font-size: 25px;
+    border: none;
+    outline: none;
+    background-color: var(--primary-color);
+    color: var(--neutral-color);
+    cursor: pointer;
+    padding: 15px 25px;
+}
+
+#onTopBtn:hover {
+    opacity: 1;
+    color: var(--secondary-color);
+}
+
+.slow-visible {
+    visibility: visible;
+    opacity: 0.4;
+    transition: opacity 1s;
+}
+.slow-hidden, #onTopBtn:hover.slow-hidden {
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 1s, visibility 1s linear;
+}

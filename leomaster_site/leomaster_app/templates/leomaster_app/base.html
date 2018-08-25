@@ -1,0 +1,44 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{% static "leomaster_app/bootstrap/css/bootstrap.css" %}">
+    <link rel="stylesheet" href="{% static "leomaster_app/fontawesome/css/font-awesome.css" %}">
+    <link rel="stylesheet" href="{% static "leomaster_app/css/main.css" %}">
+    <link rel="stylesheet" href="{% static "leomaster_app/css/menu.css" %}">
+    <link rel="stylesheet" href="{% static "leomaster_app/css/on_top_button.css" %}">
+    {% block stiles %}{% endblock %}
+
+    <title>{% block title %}{{ site_title }}{% endblock %}</title>
+</head>
+<body>
+<div class="wrapper">
+    <div class="grid-container">
+        {% block header %}
+            <div class="grid-item header">
+                <div class="pre-header">
+                    <h6>Мастерклассы</h6>
+                </div>
+                <h1>Leonardo</h1>
+                <div class="post-header">Агрегатор мастерклассов сети магазинов <a href="https://leonardo.ru"
+                                                                                   target="_blank">"Леонардо"</a></div>
+                <div class="figured-border">
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        {% endblock %}
+        {% block main %}{% endblock %}
+    </div>
+    {% block footer %}{% endblock %}
+</div>
+<button class="slow-hidden" onclick="topFunction()" id="onTopBtn" title="Наверх"><i class="fa fa-angle-double-up fa-pw" aria-hidden="true"></i></button>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="{% static "leomaster_app/bootstrap/js/bootstrap.js" %}" type="text/javascript"></script>
+<script src="{% static "leomaster_app/js/on_top_button.js" %}" type="text/javascript"></script>
+<script src="{% static "leomaster_app/js/dynamic_download.js" %}" type="text/javascript"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
