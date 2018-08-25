@@ -97,16 +97,17 @@ def update(self):
             Masterclass.objects.filter(uid=key).update(**body, master=master, location=location)
             logger.info('Masterclass already exists: "{0}"'.format(key))
 
-    logger.info('Update task finished%s%s%s' % ('\n', '=' * 25, '\n'))
+    logger.info('<<<<< Update task finished')
 
 
 def download_image(url, http_headers, web_session):
     request = requests.Request('GET', url, headers=http_headers)
     prepared_request = request.prepare()
-    logger.info('Downloading image (url: "{0}")'.format(url))
-    response = web_session.send(prepared_request)
+    response = web_session.send(prepared_request, timeout=LEO_TASK_TIMEOUT)
     if response.status_code == 200:
         return response.content
+    logger.warning('Problem occurred while downloading image "{0}", response code is {1}'.format(
+        url, response.status_code))
     return None
 
 
@@ -121,47 +122,55 @@ def update_images(self):
     _2_month_ago = datetime.today() - timedelta(days=30)
     masterclasses = Masterclass.objects.all().filter(creation_ts__gte=_2_month_ago)
     for mc in masterclasses:
-        download_images.delay(mc.id)
+        download_images.apply_async(args=(mc.id,), queue='updates')
 
 
-@app.task(bind=True, max_retries=1, ignore_result=True, default_retry_delay=60*2.5)
+@app.task(bind=True, max_retries=LEO_DOWNLOAD_MAX_RETRIES, ignore_result=True, expires=LEO_TASK_EXPIRES)
 def download_images(self, mc_id):
-    logger.info('Starting download task')
-    logger.info('Downloading images for masterclass id= {0}'.format(mc_id))
+    logger.info('>>>>> Mc {0}: Downloading images'.format(mc_id))
     user_agent = fake_useragent.UserAgent(fallback=LEO_DEFAULT_USER_AGENT,
                                           path=LEO_FAKE_USER_AGENT_CACHE)
     current_agent = user_agent.random
-    logger.info('Current user agent: {0}'.format(current_agent))
+    logger.info('Mc {0}: Current user agent: {1}'.format(mc_id, current_agent))
 
     http_headers = {'User-Agent': current_agent}
     web_session = requests.Session()
 
     mc = Masterclass.objects.get(pk=mc_id)
     target_dir = os.path.join(settings.MEDIA_ROOT, settings.DOWNLOAD_IMG_DIR)
-    logger.debug('Target directory is "{0}"'.format(target_dir))
+    logger.debug('Mc {0}: Target directory is "{1}"'.format(mc_id, target_dir))
 
     try:
         url = 'https:' + mc.img_url
+        logger.info('Mc {0}: Downloading main image "{1}"'.format(mc_id, url))
         img_content = download_image(url, http_headers, web_session)
+        if img_content is None:
+            return
         img_path = os.path.join(target_dir, '{0}.jpeg'.format(mc.uid))
         save_binary(img_content, img_path)
+        logger.info('Mc {0}: Image saved to {1}'.format(mc_id, img_path))
 
         url = 'https:' + mc.preview_img_url
+        logger.info('Mc {0}: Downloading preview image "{1}"'.format(mc_id, url))
         img_content = download_image(url, http_headers, web_session)
+        if img_content is None:
+            return
         img_path = os.path.join(target_dir, '{0}_preview.jpeg'.format(mc.uid))
         save_binary(img_content, img_path)
-
+        logger.info('Mc {0}: Image saved to {1}'.format(mc_id, img_path))
     except requests.RequestException as err:
-        print(err)
-        logger.exception(err)
-        logger.warning('Task will be retried after {0} sec'.format(LEO_RETRY_DELAY))
-        raise self.retry(exc=err, countdown=LEO_RETRY_DELAY)
+        logger.exception('Mc {0}: Error occurred while trying to download image: {1}'.format(mc_id, err))
+        logger.warning('Mc {0}: Task "download_images" will be retry (attempt {1} of {2})'.format(
+            mc_id, self.request.retries, LEO_DOWNLOAD_MAX_RETRIES))
+        raise self.retry(exc=err, countdown=(2 ** self.request.retries) * LEO_RETRY_DELAY)
+    finally:
+        logger.info('<<<<< Mc {0}:  Downloading images finished'.format(mc_id))
 
 
 @app.task(bind=True, max_retries=LEO_NOTIFICATION_MAX_RETRIES, ignore_result=True)
 def notify(self, mc_id):
     lang = 'ru'
-    logger.info('Mc {0}: Notify about masterclass'.format(mc_id))
+    logger.info('>>>>> Mc {0}: Notify about masterclass'.format(mc_id))
     translation.activate(lang)
     leobot = LeoBot(LEO_TELEGRAM_BOT_TOKEN)
     mc = Masterclass.objects.get(pk=mc_id)
@@ -182,7 +191,9 @@ def notify(self, mc_id):
         logger.debug('Mc {0}: Try send message'.format(mc_id))
         leobot.send_message(LEO_TELEGRAM_CHAT_ID, rendered)
     except Exception as err:
-        logger.warning('Mc {0}: Error occurred while trying to send message: {1}'.format(mc_id, err))
+        logger.exception('Mc {0}: Error occurred while trying to send message: {1}'.format(mc_id, err))
         logger.warning('Mc {0}: Task "notify" will be retry (attempt {1} of {2})'.format(
             mc_id, self.request.retries, LEO_NOTIFICATION_MAX_RETRIES))
         raise self.retry(exc=err, countdown=(2 ** self.request.retries) * LEO_RETRY_DELAY)
+    finally:
+        logger.info('<<<<< Mc {0}:  Notifying finished'.format(mc_id))
