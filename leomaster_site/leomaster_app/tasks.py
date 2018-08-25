@@ -198,3 +198,17 @@ def notify(self, mc_id):
         raise self.retry(exc=err, countdown=(2 ** self.request.retries) * LEO_RETRY_DELAY)
     finally:
         logger.info('<<<<< Mc {0}:  Notifying finished'.format(mc_id))
+
+
+@app.task(bind=True, max_retries=0, ignore_result=True, expires=LEO_TASK_EXPIRES)
+def watchdog(self):
+    logger.info('>>>>> Watchdog starting')
+    leobot = LeoBot(LEO_TELEGRAM_BOT_TOKEN)
+    try:
+        today = date_format(datetime.now(tz=pytz.timezone(CURRENT_TZ)), 'd-m-Y H:i, l'),
+        logger.info('Watchdog say: ' + str(today))
+        leobot.send_message(LEO_TELEGRAM_ADMIN_CHAT_ID, 'Watchdog say: ' + str(today))
+    except Exception as err:
+        logger.exception('Error occurred while trying to watchdog: {0}'.format(err))
+    finally:
+        logger.info('<<<<< Watchdog finished')

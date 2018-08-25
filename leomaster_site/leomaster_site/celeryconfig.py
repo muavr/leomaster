@@ -40,5 +40,13 @@ beat_schedule = {
             'queue': 'updates'
         }
     },
+    'watchdog-everyday': {
+        'task': 'leomaster_app.tasks.watchdog',
+        'schedule': crontab(minute=0, hour=10),
+        'args': tuple(),
+        'options': {
+            'queue': 'updates'
+        }
+    }
 }
 
