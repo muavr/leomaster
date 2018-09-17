@@ -91,8 +91,12 @@ def update(self):
         if not Masterclass.objects.filter(uid=key).exists():
             mc = Masterclass.objects.create(**body, master=master, location=location)
             logger.info('New masterclass was added: "{0}"'.format(mc.uid))
-            download_images.apply_async(args=(mc.id,), queue='downloads')
-            notify.apply_async(args=(mc.id,), queue='notifications')
+
+            chain = celery.chain(
+                download_images.si(mc.id).set(queue='downloads'),
+                notify.si(mc.id).set(queue='notifications'),
+            )
+            chain.delay()
         else:
             body.pop('uid')
             if body.get('duration') == 0:
