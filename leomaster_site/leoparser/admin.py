@@ -4,8 +4,8 @@ from leoparser.models import Rule, TypeOf
 
 
 class RuleAdminForm(forms.ModelForm):
-    name = forms.CharField(min_length=78)
-    xpath = forms.CharField()
+    name = forms.CharField()
+    xpath = forms.CharField(widget=forms.TextInput(attrs={'size': '100'}))
 
     class Meta:
         model = Rule
@@ -22,8 +22,8 @@ class TypeOfAdminForm(forms.ModelForm):
 
 class RuleAdmin(admin.ModelAdmin):
     form = RuleAdminForm
-    fields = ('name', 'xpath', 'typeof', )
-    list_display = ('name', 'xpath', 'typeof', )
+    fields = ('name', 'xpath', 'typeof', 'parent', )
+    list_display = ('name', 'xpath', 'typeof', 'parent', )
 
 
 class TypeOfAdmin(admin.ModelAdmin):

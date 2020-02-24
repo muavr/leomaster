@@ -5,6 +5,7 @@ class Rule(models.Model):
     name = models.TextField(verbose_name='name', unique=True, blank=False)
     xpath = models.TextField(verbose_name='xpath', blank=False)
     typeof = models.ForeignKey('TypeOf', on_delete=models.CASCADE)
+    parent = models.ForeignKey('Rule', related_name='children', null=True, blank=True, on_delete=models.CASCADE)
 
     class Meta:
         ordering = ('name', )
