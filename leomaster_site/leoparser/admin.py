@@ -12,14 +12,6 @@ class RuleAdminForm(forms.ModelForm):
         fields = ('name', 'xpath', 'typeof', )
 
 
-class TypeOfAdminForm(forms.ModelForm):
-    name = forms.CharField()
-
-    class Meta:
-        model = TypeOf
-        fields = ('name', )
-
-
 class RuleAdmin(admin.ModelAdmin):
     form = RuleAdminForm
     fields = ('name', 'xpath', 'typeof', 'parent', )
@@ -27,7 +19,6 @@ class RuleAdmin(admin.ModelAdmin):
 
 
 class TypeOfAdmin(admin.ModelAdmin):
-    form = TypeOfAdminForm
     fields = ('name', )
     list_display = ('name', )
 
