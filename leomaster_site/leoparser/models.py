@@ -8,7 +8,7 @@ class Rule(models.Model):
     parent = models.ForeignKey('Rule', related_name='children', null=True, blank=True, on_delete=models.CASCADE)
 
     class Meta:
-        ordering = ('name', )
+        ordering = ('name',)
 
     def apply(self, element):
         res = element.xpath(self.xpath)
@@ -29,8 +29,15 @@ class Rule(models.Model):
                 'children': [c.id for c in self.children.all()]}
 
 
-class TypeOf(models.Model):
+def apply_once_or_many(f):
+    def wrapper(value):
+        if isinstance(value, (list, tuple)):
+            return [f(v) for v in value]
+        return f(value)
+    return wrapper
 
+
+class TypeOf(models.Model):
     T_CONTAINER = 'container'
     T_CURRENCY = 'currency'
     T_DATE = 'date'
@@ -67,40 +74,48 @@ class TypeOf(models.Model):
         }
 
     class Meta:
-        ordering = ('name', )
+        ordering = ('name',)
 
     def convert(self, value):
         return self.converters.get(self.name, lambda v: v)(value)
 
     @staticmethod
+    @apply_once_or_many
     def to_container(value):
         return value
 
     @staticmethod
+    @apply_once_or_many
     def to_currency(value):
         return value
 
     @staticmethod
+    @apply_once_or_many
     def to_date(value):
         return value
 
     @staticmethod
+    @apply_once_or_many
     def to_datetime(value):
         return value
 
     @staticmethod
+    @apply_once_or_many
     def to_float(value):
-        return value
+        return float(value)
 
     @staticmethod
+    @apply_once_or_many
     def to_integer(value):
-        return value
+        return int(value)
 
     @staticmethod
+    @apply_once_or_many
     def to_string(value):
-        return value
+        return str(value).strip()
 
     @staticmethod
+    @apply_once_or_many
     def to_time(value):
         return value
 
