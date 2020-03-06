@@ -1,9 +1,11 @@
+import re
 from django.db import models
 
 
 class Rule(models.Model):
     name = models.TextField(verbose_name='name', unique=True, blank=False)
     xpath = models.TextField(verbose_name='xpath', blank=False)
+    regex = models.TextField(verbose_name='regex', blank=True)
     typeof = models.ForeignKey('TypeOf', on_delete=models.CASCADE)
     parent = models.ForeignKey('Rule', related_name='children', null=True, blank=True, on_delete=models.CASCADE)
 
@@ -12,6 +14,9 @@ class Rule(models.Model):
 
     def apply(self, element):
         res = element.xpath(self.xpath)
+        if self.regex:
+            extracted = re.search(self.regex, res, re.UNICODE | re.IGNORECASE)
+            res = extracted.group(0) if extracted else res
         return self.typeof.convert(res)
 
     def __str__(self):
@@ -32,7 +37,10 @@ class Rule(models.Model):
 def apply_once_or_many(f):
     def wrapper(value):
         if isinstance(value, (list, tuple)):
-            return [f(v) for v in value]
+            if len(value) > 1:
+                return [f(v) for v in value]
+            elif len(value) == 1:
+                value = value[0]
         return f(value)
     return wrapper
 
