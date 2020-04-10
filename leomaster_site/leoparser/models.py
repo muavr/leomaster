@@ -1,5 +1,10 @@
 import re
+import json
+import uuid
 from django.db import models
+from dictdiffer import diff, patch
+from django.contrib.postgres.fields import JSONField
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class Rule(models.Model):
@@ -141,3 +146,147 @@ class TypeOf(models.Model):
 
     def __repr__(self):
         return '<TypeOf>::%s' % (self.name,)
+
+
+class DocDelta(models.Model):
+    base = models.ForeignKey('Document', null=False, on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True)
+    delta = JSONField(default=list)
+
+    def __str__(self):
+        return json.dumps(self.delta, indent=1)
+
+    def __repr__(self):
+        return '<%s: id="%s" delta="%s">' % (self.__class__.__name__, self.id, self.delta,)
+
+
+class HistoryManager(models.Manager):
+
+    def __init__(self, unique_field='uid', *args, **kwargs):
+        self.unique_field = unique_field
+        super().__init__(*args, **kwargs)
+
+    def save(self, content, *args, **kwargs):
+        try:
+            unique_value = str(content.pop(self.unique_field))
+        except KeyError:
+            unique_value = uuid.uuid4().hex
+
+        try:
+            doc = super().get_queryset().get(uid=unique_value)
+            doc.content = content
+            delta = doc.delta
+            doc.save(*args, **kwargs)
+            is_new = False
+        except ObjectDoesNotExist:
+            doc = super().get_queryset().create(content=content, uid=unique_value)
+            delta = doc.delta
+            is_new = True
+
+        return doc, is_new, delta
+
+
+class GenericDocument(models.Model):
+    uid = models.TextField(unique=True)
+    content = JSONField(default=dict, null=False)
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
+    _track_change = False
+    _track_add = False
+    _track_remove = False
+
+    objects = models.Manager()
+    history = HistoryManager()
+
+    class Meta:
+        abstract = True
+
+    def __init__(self, *args, **kwargs):
+        self._old_content = None
+        super().__init__(*args, **kwargs)
+
+    @property
+    def actions(self):
+        actions = []
+        if self._track_change:
+            actions.append('change')
+        if self._track_add:
+            actions.append('add')
+        if self._track_remove:
+            actions.append('remove')
+        return actions
+
+    def __setattr__(self, key, value):
+        if key == 'content':
+            # instance has already created
+            if self.__dict__.get('id') and self._old_content is None:
+                self._old_content = self.__dict__.get('content')
+        return super().__setattr__(key, value)
+
+    @property
+    def patched_content(self):
+        if self._old_content is None:
+            return self.content
+        return patch(self.delta, self._old_content)
+
+    def save(self, *args, **kwargs):
+        if self._old_content is not None:
+            super().__setattr__('content', self.patched_content)
+        super().save(*args, **kwargs)
+        self._old_content = None
+
+    @property
+    def delta(self):
+        if self._old_content is not None:
+            return self._gen_delta(self._old_content, self.content)
+        return list()
+
+    def _gen_delta(self, original, modified):
+        for action in diff(original, modified):
+            if action[0] in self.actions:
+                yield action
+
+    def __str__(self):
+        return '%s%s' % (json.dumps(self.content)[:100], '...')
+
+    def __repr__(self):
+        return '<%s: id="%s" uid="%s">' % (self.__class__.__name__, self.id, self.uid,)
+
+
+class TrackChangeMixin:
+    _track_change = True
+
+
+class TrackAddMixin:
+    _track_add = True
+
+
+class TrackRemoveMixin:
+    _track_remove = True
+
+
+class PersistentHistoryDocument(TrackChangeMixin, TrackAddMixin, GenericDocument):
+    """
+    Only updates and additional information are tracked
+    All deletions will be ignored
+    """
+
+    class Meta:
+        abstract = True
+
+
+class UnsteadyHistoryDocument(TrackChangeMixin, TrackAddMixin, TrackRemoveMixin, GenericDocument):
+    """
+    All changes (add, updates and deletion) will be counted
+    """
+
+    class Meta:
+        abstract = True
+
+
+class Document(PersistentHistoryDocument):
+    pass
+
+
+class RemovableHistoryDocument(UnsteadyHistoryDocument):
+    pass
