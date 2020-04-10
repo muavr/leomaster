@@ -7,6 +7,7 @@ class RuleAdminForm(forms.ModelForm):
     name = forms.CharField()
     xpath = forms.CharField(widget=forms.TextInput(attrs={'size': '100'}))
     regex = forms.CharField(widget=forms.TextInput(attrs={'size': '100'}), required=False)
+    sub = forms.CharField(widget=forms.TextInput(attrs={'size': '100'}), required=False)
 
     class Meta:
         model = Rule
@@ -15,8 +16,8 @@ class RuleAdminForm(forms.ModelForm):
 
 class RuleAdmin(admin.ModelAdmin):
     form = RuleAdminForm
-    fields = ('name', 'xpath', 'regex', 'typeof', 'parent', )
-    list_display = ('name', 'xpath', 'regex', 'typeof', 'parent', )
+    fields = ('name', 'xpath', 'regex', 'sub', 'typeof', 'parent', )
+    list_display = ('name', 'xpath', 'regex', 'sub', 'typeof', 'parent', )
 
 
 class TypeOfAdmin(admin.ModelAdmin):
