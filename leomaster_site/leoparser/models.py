@@ -29,10 +29,10 @@ class Rule(models.Model):
         return self.typeof.convert(res)
 
     def __str__(self):
-        return '%s::%s::%s' % (self.name, self.xpath, self.typeof)
+        return '%s::%s(%s)' % (self.typeof, self.name, self.xpath)
 
     def __repr__(self):
-        return '<Rule>::%s' % (self.name,)
+        return '<%s: id="%s" body="%s">' % (self.__class__.__name__, self.id, self.__str__(),)
 
     def to_dict(self):
         return {'id': self.id,
