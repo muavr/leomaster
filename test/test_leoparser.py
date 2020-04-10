@@ -3,7 +3,7 @@
 import unittest
 from decimal import *
 from datetime import datetime
-from leoparser.leoparser import DurationFieldExtractor, CurrencyFieldExtractor, DateTimeFieldExtractor
+from _leoparser.leoparser import DurationFieldExtractor, CurrencyFieldExtractor, DateTimeFieldExtractor
 
 
 class LeoParserTest(unittest.TestCase):

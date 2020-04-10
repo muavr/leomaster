@@ -17,7 +17,7 @@ from leobot.bot import LeoBot
 from leomaster_app.models import *
 from leomaster_app.settings import *
 from leomaster_site.celery import app
-from leoparser.leoparser import LeoParserFabric
+from _leoparser.leoparser import LeoParserFabric
 
 CONTENT_URL = 'https://leonardo.ru/masterclasses/petersburg/'
 CURRENT_TZ = 'Europe/Moscow'
