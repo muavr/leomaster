@@ -3,20 +3,29 @@ from django.db import models
 
 
 class Rule(models.Model):
-    name = models.TextField(verbose_name='name', unique=True, blank=False)
+    name = models.TextField(verbose_name='name', blank=False)
     xpath = models.TextField(verbose_name='xpath', blank=False)
     regex = models.TextField(verbose_name='regex', blank=True)
+    sub = models.TextField(verbose_name='sub', blank=True)
     typeof = models.ForeignKey('TypeOf', on_delete=models.CASCADE)
     parent = models.ForeignKey('Rule', related_name='children', null=True, blank=True, on_delete=models.CASCADE)
 
     class Meta:
-        ordering = ('name',)
+        ordering = ('name', )
+        unique_together = ('name', 'parent',)
+
+    @property
+    def caption(self):
+        return self.title or self.name
 
     def apply(self, element):
         res = element.xpath(self.xpath)
         if self.regex:
-            extracted = re.search(self.regex, res, re.UNICODE | re.IGNORECASE)
+            regex = re.compile(self.regex, re.UNICODE | re.IGNORECASE)
+            extracted = regex.search(res)
             res = extracted.group(0) if extracted else res
+            if self.sub:
+                res = regex.sub(self.sub, res)
         return self.typeof.convert(res)
 
     def __str__(self):
