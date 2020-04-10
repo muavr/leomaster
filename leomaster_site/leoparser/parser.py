@@ -11,7 +11,10 @@ class Parser:
         return [rule for rule in self.rules.values() if rule.parent is None]
 
     def _go_through_rules(self, root, html, doc, level=1):
-        result = root.apply(html)
+        try:
+            result = root.apply(html)
+        except Exception:
+            result = '__error__'
         if isinstance(result, (list, tuple)):
             for index, peace_of_result in enumerate(result):
                 if isinstance(peace_of_result, lxml.html.HtmlElement):
@@ -38,7 +41,7 @@ class Parser:
                 print(' ' * (level * 3) + '|_', str(rule))
                 self._go_through_rules(rule, context_html, context_doc, level=level + 1)
 
-    def go_though(self, html, doc):
+    def go_through(self, html, doc):
         root_rules = self._get_roots()
         for root in root_rules:
             print('|_', str(root))
@@ -47,6 +50,5 @@ class Parser:
     def parse(self, content):
         doc = dict()
         html = lxml.html.document_fromstring(content)
-        self.go_though(html, doc)
+        self.go_through(html, doc)
         return doc
-
