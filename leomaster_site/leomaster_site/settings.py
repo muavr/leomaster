@@ -33,7 +33,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'leomaster_app'
+    'leomaster_app',
+    'leoparser',
 ]
 
 MIDDLEWARE = [
