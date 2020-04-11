@@ -145,7 +145,7 @@ class TypeOf(models.Model):
         return self.name
 
     def __repr__(self):
-        return '<TypeOf>::%s' % (self.name,)
+        return '<%s: id="%s" name="%s">' % (self.__class__.__name__, self.id, self.__str__(),)
 
 
 class DocDelta(models.Model):
