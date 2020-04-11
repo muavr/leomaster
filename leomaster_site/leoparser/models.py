@@ -149,7 +149,7 @@ class TypeOf(models.Model):
 
 
 class DocDelta(models.Model):
-    base = models.ForeignKey('Document', null=False, on_delete=models.CASCADE)
+    base = models.ForeignKey('GenericDocument', related_name='delta_set', null=False, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True)
     delta = JSONField(default=list)
 
@@ -172,14 +172,16 @@ class HistoryManager(models.Manager):
         except KeyError:
             unique_value = uuid.uuid4().hex
 
+        lookup = {self.unique_field: unique_value}
         try:
-            doc = super().get_queryset().get(uid=unique_value)
+
+            doc = self.get_queryset().get(**lookup)
             doc.content = content
             delta = doc.delta
             doc.save(*args, **kwargs)
             is_new = False
         except ObjectDoesNotExist:
-            doc = super().get_queryset().create(content=content, uid=unique_value)
+            doc = self.get_queryset().create(content=content, **lookup)
             delta = doc.delta
             is_new = True
 
@@ -197,9 +199,6 @@ class GenericDocument(models.Model):
 
     objects = models.Manager()
     history = HistoryManager()
-
-    class Meta:
-        abstract = True
 
     def __init__(self, *args, **kwargs):
         self._old_content = None
@@ -272,7 +271,7 @@ class PersistentHistoryDocument(TrackChangeMixin, TrackAddMixin, GenericDocument
     """
 
     class Meta:
-        abstract = True
+        proxy = True
 
 
 class UnsteadyHistoryDocument(TrackChangeMixin, TrackAddMixin, TrackRemoveMixin, GenericDocument):
@@ -281,7 +280,7 @@ class UnsteadyHistoryDocument(TrackChangeMixin, TrackAddMixin, TrackRemoveMixin,
     """
 
     class Meta:
-        abstract = True
+        proxy = True
 
 
 class Document(PersistentHistoryDocument):
