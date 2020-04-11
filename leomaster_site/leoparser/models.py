@@ -2,7 +2,7 @@ import re
 import json
 import uuid
 from django.db import models
-from dictdiffer import diff, patch
+from dictdiffer import diff, patch, revert
 from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import ObjectDoesNotExist
 
@@ -244,6 +244,16 @@ class GenericDocument(models.Model):
         for action in diff(original, modified):
             if action[0] in self.actions:
                 yield action
+
+    def get_history(self):
+        current_version = self.content
+        history = [current_version]
+        doc_delta_set = DocDelta.objects.all().order_by('-created')
+        for doc_delta in doc_delta_set:
+            previous_version = revert(doc_delta.delta, current_version)
+            history.append(previous_version)
+            current_version = previous_version
+        return history
 
     def __str__(self):
         return '%s%s' % (json.dumps(self.content)[:100], '...')

@@ -380,3 +380,45 @@ class TestSignalAutoSaveDelta(TestCase):
         delta_set = DocDelta.objects.all()
         self.assertEqual(1, len(delta_set))
         self.assertEqual([['change', 'b', [2, 4]]], delta_set[0].delta)
+
+
+class TestRetrieveDocumentHistory(TestCase):
+
+    def setUp(self):
+        self.doc_versions = [
+            {'uid': 1, 'a': 1, 'b': 2},
+            {'uid': 1, 'a': 1, 'b': 4},
+            {'uid': 1, 'a': 1, 'b': 2, 'c': 3},
+            {'uid': 1, 'a': 1}  # won't be counted for Document
+        ]
+
+    def test_retrieving_doc_history(self):
+
+        doc = None
+        for version in self.doc_versions:
+            doc, is_new, delta = Document.history.save(content=version)
+
+        history = doc.get_history()
+
+        self.assertEqual(3, len(history))
+
+        self.assertEqual(self.doc_versions[2], history[0])
+        self.assertEqual(self.doc_versions[1], history[1])
+        self.assertEqual(self.doc_versions[0], history[2])
+
+    def test_retrieving_removable_doc_history(self):
+
+        doc = None
+        for version in self.doc_versions:
+            doc, is_new, delta = RemovableHistoryDocument.history.save(content=version)
+
+        history = doc.get_history()
+
+        self.assertEqual(4, len(history))
+        self.assertEqual(self.doc_versions[3], history[0])
+        self.assertEqual(self.doc_versions[2], history[1])
+        self.assertEqual(self.doc_versions[1], history[2])
+        self.assertEqual(self.doc_versions[0], history[3])
+
+
+
