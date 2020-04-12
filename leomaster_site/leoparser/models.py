@@ -2,6 +2,8 @@ import re
 import json
 import uuid
 from django.db import models
+from django.utils import timezone
+from dateutil.relativedelta import *
 from dictdiffer import diff, patch, revert
 from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import ObjectDoesNotExist
@@ -18,10 +20,6 @@ class Rule(models.Model):
     class Meta:
         ordering = ('name', )
         unique_together = ('name', 'parent',)
-
-    @property
-    def caption(self):
-        return self.title or self.name
 
     def apply(self, element):
         res = element.xpath(self.xpath)
@@ -153,6 +151,9 @@ class DocDelta(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     delta = JSONField(default=list)
 
+    class Meta:
+        ordering = ('-created',)
+
     def __str__(self):
         return json.dumps(self.delta, indent=1)
 
@@ -245,14 +246,47 @@ class GenericDocument(models.Model):
             if action[0] in self.actions:
                 yield action
 
-    def get_history(self):
+    def get_year_history(self):
+        return self.get_history_period(years=1)
+
+    def get_month_history(self):
+        return self.get_history_period(months=1)
+
+    def get_week_history(self):
+        return self.get_history_period(weeks=1)
+
+    def get_day_history(self):
+        return self.get_history_period(days=1, zero_time=False)
+
+    def get_nth_history(self, n):
+        n = n if n >= 0 else None
+        queryset = self.get_history()
+        if n is None:
+            return queryset
+        return queryset[:n]
+
+    def get_history_period(self, zero_time=True, **kwargs):
+        zero_time = {'hour': 0, 'minute': 0, 'second': 0, 'microsecond': 0} if zero_time else {}
+        today = timezone.now()
+        delta = relativedelta(**zero_time, **kwargs)
+        last_date = today - delta
+        print(last_date)
+        return self.get_history(created__gte=last_date)
+
+    def get_history(self, n=-1, **kwargs):
+        try:
+            n = int(n)
+        except (TypeError, ValueError):
+            raise TypeError('Amount of history items must be integer representable: "%s" isn\'t' % (n,))
         current_version = self.content
         history = [current_version]
-        doc_delta_set = DocDelta.objects.all().order_by('-created')
+        doc_delta_set = DocDelta.objects.all().filter(**kwargs).order_by('-created')
         for doc_delta in doc_delta_set:
             previous_version = revert(doc_delta.delta, current_version)
             history.append(previous_version)
             current_version = previous_version
+        if n >= 0:
+            return history[:n]
         return history
 
     def __str__(self):
