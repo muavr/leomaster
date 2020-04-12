@@ -1,5 +1,8 @@
+import mock
 from django.test import TestCase
+from django.utils import timezone
 from dictdiffer import diff, patch
+from dateutil.relativedelta import *
 from leoparser.models import Document, RemovableHistoryDocument, DocDelta
 
 
@@ -315,31 +318,128 @@ class TestBaseModelBehaviour(TestCase):
 
 class TestHistoryManagerWithDataUid(TestCase):
 
+    def setUp(self):
+        self.original = {'uid': 1, 'a': 1}
+        self.modified = {'uid': 1, 'a': 2}
+
     def test_save_new_document(self):
-        original = {'uid': 100, 'a': 1, 'b': 2}
-        doc, is_new, delta = Document.history.save(content=original)
+        doc, is_new, delta = Document.history.save(content=self.original)
 
         self.assertTrue(is_new)
-        self.assertEqual(doc.uid, '100')
-        self.assertEqual(doc.content, original)
+        self.assertEqual(doc.uid, '1')
+        self.assertEqual(doc.content, self.original)
         self.assertEqual([], delta)
-        self.assertEqual(original, doc.patched_content)
+        self.assertEqual(self.original, doc.patched_content)
 
     def test_save_diff_documents(self):
-        original = {'uid': 100, 'a': 1, 'b': 2}
-        modified = {'uid': 100, 'a': 1, 'b': 3}
-        doc, is_new, delta = Document.history.save(content=original)
+        doc, is_new, delta = Document.history.save(content=self.original)
         self.assertTrue(is_new)
         self.assertEqual([], list(delta))
 
-        another_doc, is_new, delta = Document.history.save(content=modified)
+        another_doc, is_new, delta = Document.history.save(content=self.modified)
 
         self.assertFalse(is_new)
         self.assertEqual(doc.uid, another_doc.uid)
         self.assertEqual(doc.id, another_doc.id)
-        self.assertEqual(another_doc.content, modified)
-        self.assertEqual([('change', 'b', (2, 3))], list(delta))
-        self.assertEqual(modified, another_doc.patched_content)
+        self.assertEqual(another_doc.content, self.modified)
+        self.assertEqual([('change', 'a', (1, 2))], list(delta))
+        self.assertEqual(self.modified, another_doc.patched_content)
+
+    def _create_doc_with_delta_in_the_past(self, *, years=0, months=0, weeks=0, days=0, hours=0, minutes=0, seconds=0):
+        Document.history.save(content=self.original)
+        today = timezone.now()
+        last_datetime = today - relativedelta(years=years, months=months, weeks=weeks, days=days,
+                                              hours=hours, minutes=minutes, seconds=seconds)
+        print(last_datetime)
+        with mock.patch('django.utils.timezone.now', mock.Mock(return_value=last_datetime)):
+            doc, _, _ = Document.history.save(content=self.modified)
+
+        return doc
+
+    def test_return_history_for_last_year_negative(self):
+        doc = self._create_doc_with_delta_in_the_past(years=1, days=1)
+
+        delta_set = doc.delta_set.all()
+        self.assertEqual(1, len(delta_set))
+
+        year_history = doc.get_year_history()
+        self.assertEqual(1, len(year_history))
+
+    def test_return_history_for_last_year_positive(self):
+        doc = self._create_doc_with_delta_in_the_past(years=1)
+
+        delta_set = doc.delta_set.all()
+        self.assertEqual(1, len(delta_set))
+
+        year_history = doc.get_year_history()
+        self.assertEqual(2, len(year_history))
+
+    def test_return_history_for_last_month_negative(self):
+        doc = self._create_doc_with_delta_in_the_past(months=1, days=1)
+
+        delta_set = doc.delta_set.all()
+        self.assertEqual(1, len(delta_set))
+
+        month_history = doc.get_month_history()
+        self.assertEqual(1, len(month_history))
+
+    def test_return_history_for_last_month_positive(self):
+        doc = self._create_doc_with_delta_in_the_past(months=1)
+
+        delta_set = doc.delta_set.all()
+        self.assertEqual(1, len(delta_set))
+
+        month_history = doc.get_month_history()
+        self.assertEqual(2, len(month_history))
+
+    def test_return_history_for_last_week_negative(self):
+        doc = self._create_doc_with_delta_in_the_past(weeks=1, days=1)
+
+        delta_set = doc.delta_set.all()
+        self.assertEqual(1, len(delta_set))
+
+        week_history = doc.get_week_history()
+        self.assertEqual(1, len(week_history))
+
+    def test_return_history_for_last_week_positive(self):
+        doc = self._create_doc_with_delta_in_the_past(weeks=1)
+
+        delta_set = doc.delta_set.all()
+        self.assertEqual(1, len(delta_set))
+
+        week_history = doc.get_week_history()
+        self.assertEqual(2, len(week_history))
+
+    def test_return_history_for_last_day_negative(self):
+        doc = self._create_doc_with_delta_in_the_past(hours=24)
+
+        delta_set = doc.delta_set.all()
+        self.assertEqual(1, len(delta_set))
+
+        day_history = doc.get_day_history()
+        self.assertEqual(1, len(day_history))
+
+    def test_return_history_for_last_day_positive(self):
+        doc = self._create_doc_with_delta_in_the_past(hours=23, minutes=59, seconds=59)
+
+        delta_set = doc.delta_set.all()
+        self.assertEqual(1, len(delta_set))
+
+        day_history = doc.get_day_history()
+        self.assertEqual(2, len(day_history))
+
+    def test_fetch_n_last_results(self):
+        doc = self._create_doc_with_delta_in_the_past()
+
+        self.assertEqual(0, len(doc.get_history(0)))
+        self.assertEqual(1, len(doc.get_history(1)))
+        self.assertEqual(2, len(doc.get_history(2)))
+        self.assertEqual(2, len(doc.get_history()))
+        self.assertEqual(1, len(doc.get_history('1')))
+
+        with self.assertRaises((TypeError,),) as err:
+            doc.get_history('invalid number')
+        self.assertIn('Amount of history items must be integer representable', err.exception.args[0])
 
 
 class TestHistoryManagerWithoutDataUid(TestCase):
@@ -380,3 +480,45 @@ class TestSignalAutoSaveDelta(TestCase):
         delta_set = DocDelta.objects.all()
         self.assertEqual(1, len(delta_set))
         self.assertEqual([['change', 'b', [2, 4]]], delta_set[0].delta)
+
+
+class TestRetrieveDocumentHistory(TestCase):
+
+    def setUp(self):
+        self.doc_versions = [
+            {'uid': 1, 'a': 1, 'b': 2},
+            {'uid': 1, 'a': 1, 'b': 4},
+            {'uid': 1, 'a': 1, 'b': 2, 'c': 3},
+            {'uid': 1, 'a': 1}  # won't be counted for Document
+        ]
+
+    def test_retrieving_doc_history(self):
+
+        doc = None
+        for version in self.doc_versions:
+            doc, is_new, delta = Document.history.save(content=version)
+
+        history = doc.get_history()
+
+        self.assertEqual(3, len(history))
+
+        self.assertEqual(self.doc_versions[2], history[0])
+        self.assertEqual(self.doc_versions[1], history[1])
+        self.assertEqual(self.doc_versions[0], history[2])
+
+    def test_retrieving_removable_doc_history(self):
+
+        doc = None
+        for version in self.doc_versions:
+            doc, is_new, delta = RemovableHistoryDocument.history.save(content=version)
+
+        history = doc.get_history()
+
+        self.assertEqual(4, len(history))
+        self.assertEqual(self.doc_versions[3], history[0])
+        self.assertEqual(self.doc_versions[2], history[1])
+        self.assertEqual(self.doc_versions[1], history[2])
+        self.assertEqual(self.doc_versions[0], history[3])
+
+
+
