@@ -345,8 +345,7 @@ class TestHistoryManagerWithDataUid(TestCase):
         self.assertEqual([('change', 'a', (1, 2))], list(delta))
         self.assertEqual(self.modified, another_doc.patched_content)
 
-    def _create_doc_with_delta_in_the_past(self, *, years=0, months=0, weeks=0, days=0, hours=0, minutes=0, seconds=0):
-        Document.history.save(content=self.original)
+    def create_doc_in_the_past(self, content, *, years=0, months=0, weeks=0, days=0, hours=0, minutes=0, seconds=0):
         today = timezone.now()
         last_datetime = today - relativedelta(years=years, months=months, weeks=weeks, days=days,
                                               hours=hours, minutes=minutes, seconds=seconds)
@@ -357,7 +356,8 @@ class TestHistoryManagerWithDataUid(TestCase):
         return doc
 
     def test_return_history_for_last_year_negative(self):
-        doc = self._create_doc_with_delta_in_the_past(years=1, days=1)
+        Document.history.save(content=self.original)
+        doc = self.create_doc_in_the_past(self.modified, years=1, days=1)
 
         delta_set = doc.delta_set.all()
         self.assertEqual(1, len(delta_set))
@@ -366,7 +366,8 @@ class TestHistoryManagerWithDataUid(TestCase):
         self.assertEqual(1, len(year_history))
 
     def test_return_history_for_last_year_positive(self):
-        doc = self._create_doc_with_delta_in_the_past(years=1)
+        Document.history.save(content=self.original)
+        doc = self.create_doc_in_the_past(self.modified, years=1)
 
         delta_set = doc.delta_set.all()
         self.assertEqual(1, len(delta_set))
@@ -375,7 +376,8 @@ class TestHistoryManagerWithDataUid(TestCase):
         self.assertEqual(2, len(year_history))
 
     def test_return_history_for_last_month_negative(self):
-        doc = self._create_doc_with_delta_in_the_past(months=1, days=1)
+        Document.history.save(content=self.original)
+        doc = self.create_doc_in_the_past(self.modified, months=1, days=1)
 
         delta_set = doc.delta_set.all()
         self.assertEqual(1, len(delta_set))
@@ -384,7 +386,8 @@ class TestHistoryManagerWithDataUid(TestCase):
         self.assertEqual(1, len(month_history))
 
     def test_return_history_for_last_month_positive(self):
-        doc = self._create_doc_with_delta_in_the_past(months=1)
+        Document.history.save(content=self.original)
+        doc = self.create_doc_in_the_past(self.modified, months=1)
 
         delta_set = doc.delta_set.all()
         self.assertEqual(1, len(delta_set))
@@ -393,7 +396,8 @@ class TestHistoryManagerWithDataUid(TestCase):
         self.assertEqual(2, len(month_history))
 
     def test_return_history_for_last_week_negative(self):
-        doc = self._create_doc_with_delta_in_the_past(weeks=1, days=1)
+        Document.history.save(content=self.original)
+        doc = self.create_doc_in_the_past(self.modified, weeks=1, days=1)
 
         delta_set = doc.delta_set.all()
         self.assertEqual(1, len(delta_set))
@@ -402,7 +406,8 @@ class TestHistoryManagerWithDataUid(TestCase):
         self.assertEqual(1, len(week_history))
 
     def test_return_history_for_last_week_positive(self):
-        doc = self._create_doc_with_delta_in_the_past(weeks=1)
+        Document.history.save(content=self.original)
+        doc = self.create_doc_in_the_past(self.modified, weeks=1)
 
         delta_set = doc.delta_set.all()
         self.assertEqual(1, len(delta_set))
@@ -411,7 +416,8 @@ class TestHistoryManagerWithDataUid(TestCase):
         self.assertEqual(2, len(week_history))
 
     def test_return_history_for_last_day_negative(self):
-        doc = self._create_doc_with_delta_in_the_past(hours=24)
+        Document.history.save(content=self.original)
+        doc = self.create_doc_in_the_past(self.modified, hours=24)
 
         delta_set = doc.delta_set.all()
         self.assertEqual(1, len(delta_set))
@@ -420,7 +426,8 @@ class TestHistoryManagerWithDataUid(TestCase):
         self.assertEqual(1, len(day_history))
 
     def test_return_history_for_last_day_positive(self):
-        doc = self._create_doc_with_delta_in_the_past(hours=23, minutes=59, seconds=59)
+        Document.history.save(content=self.original)
+        doc = self.create_doc_in_the_past(self.modified, hours=23, minutes=59, seconds=59)
 
         delta_set = doc.delta_set.all()
         self.assertEqual(1, len(delta_set))
@@ -429,7 +436,8 @@ class TestHistoryManagerWithDataUid(TestCase):
         self.assertEqual(2, len(day_history))
 
     def test_fetch_n_last_results(self):
-        doc = self._create_doc_with_delta_in_the_past()
+        Document.history.save(content=self.original)
+        doc = self.create_doc_in_the_past(self.modified)
 
         self.assertEqual(0, len(doc.get_history(0)))
         self.assertEqual(1, len(doc.get_history(1)))
