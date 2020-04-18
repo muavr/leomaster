@@ -1,7 +1,7 @@
 import os
 import fake_useragent
 from django.conf import settings
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'leomaster_site.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'leomaster.settings')
 
 LEO_TELEGRAM_MODE = 'HTML'
 LEO_TELEGRAM_BOT_TOKEN = '<token>'

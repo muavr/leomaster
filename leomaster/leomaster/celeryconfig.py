@@ -1,7 +1,7 @@
-from leomaster_site.celeryconfig_local import *
+from leomaster.celeryconfig_local import *
 from kombu import Queue, Exchange
 from celery.schedules import crontab
-from leomaster_app.settings import LEO_TASK_EXPIRES
+from core.settings import LEO_TASK_EXPIRES
 
 timezone = 'UTC'
 enable_utc = True
@@ -16,14 +16,14 @@ task_queues = (Queue(name='celery', exchange=Exchange('celery'), routing_key='ce
                Queue(name='downloads', exchange=Exchange('downloads'), routing_key='downloads'),
                Queue(name='notifications', exchange=Exchange('notifications'), routing_key='notifications'))
 
-task_routes = {'leomaster_app.tasks.update': {'queue': 'updates'},
-               'leomaster_app.tasks.update_images': {'queue': 'updates'},
-               'leomaster_app.tasks.download_images': {'queue': 'downloads'},
-               'leomaster_app.tasks.notify': {'queue': 'notifications'}, }
+task_routes = {'core.tasks.update': {'queue': 'updates'},
+               'core.tasks.update_images': {'queue': 'updates'},
+               'core.tasks.download_images': {'queue': 'downloads'},
+               'core.tasks.notify': {'queue': 'notifications'}, }
 
 beat_schedule = {
     'update-every-30-seconds': {
-        'task': 'leomaster_app.tasks.update',
+        'task': 'core.tasks.update',
         'schedule': 300.0,
         'args': tuple(),
         'options': {
@@ -32,7 +32,7 @@ beat_schedule = {
         }
     },
     'update-img-everyday-at-midnight': {
-        'task': 'leomaster_app.tasks.update_images',
+        'task': 'core.tasks.update_images',
         'schedule': crontab(minute=0, hour=0),
         'args': tuple(),
         'options': {
@@ -41,7 +41,7 @@ beat_schedule = {
         }
     },
     'watchdog-everyday': {
-        'task': 'leomaster_app.tasks.watchdog',
+        'task': 'core.tasks.watchdog',
         'schedule': crontab(minute=0, hour=10),
         'args': tuple(),
         'options': {

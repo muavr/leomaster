@@ -14,9 +14,9 @@ from celery.utils.log import get_task_logger
 from logging.handlers import TimedRotatingFileHandler
 
 from leobot.bot import LeoBot
-from leomaster_app.models import *
-from leomaster_app.settings import *
-from leomaster_site.celery import app
+from core.models import *
+from core.settings import *
+from leomaster.celery import app
 from _leoparser.leoparser import LeoParserFabric
 
 CONTENT_URL = 'https://leonardo.ru/masterclasses/petersburg/'
@@ -182,7 +182,7 @@ def notify(self, mc_id):
     translation.activate(lang)
     leobot = LeoBot(LEO_TELEGRAM_BOT_TOKEN)
     mc = Masterclass.objects.get(pk=mc_id)
-    template = loader.get_template('leomaster_app/telegram_notification.html')
+    template = loader.get_template('core/telegram_notification.html')
     context = {'title': mc.title,
                'when': date_format(mc.date.astimezone(pytz.timezone(mc.location.tz)), 'd-m-Y H:i, l'),
                'where': mc.location.name,

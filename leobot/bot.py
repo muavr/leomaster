@@ -2,7 +2,7 @@ import json
 import time
 import requests
 from leobot.settings import *
-from leomaster_app.settings_local import LEO_TELEGRAM_BOT_TOKEN
+from core.settings_local import LEO_TELEGRAM_BOT_TOKEN
 
 
 class LeoBot:
