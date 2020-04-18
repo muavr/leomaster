@@ -1,12 +1,81 @@
 import re
 import json
 import uuid
+import lxml
+import lxml.html
 from django.db import models
 from django.utils import timezone
 from dateutil.relativedelta import *
 from dictdiffer import diff, patch, revert
 from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import ObjectDoesNotExist
+
+
+class Parser(models.Model):
+    name = models.TextField(verbose_name='name', unique=True, blank=False)
+    rule_set = models.ManyToManyField('Rule', verbose_name='rule', related_name='parsers')
+
+    def __init__(self, *args, **kwargs):
+        super(Parser, self).__init__(*args, **kwargs)
+        self._rules = {}
+
+    @property
+    def rules(self):
+        if self.id:
+            if not self._rules:
+                self._rules = {rule.id: rule for rule in self.rule_set.select_related('typeof', 'parent').all()}
+                self._init_children()
+        return self._rules
+
+    def _init_children(self):
+        for _id, rule in self.rules.items():
+            rule.set_children([r for r in self.rules.values() if r.parent_id == _id])
+
+    def _get_roots(self):
+        return [rule for rule in self.rules.values() if rule.parent is None]
+
+    def _go_through_rules(self, root, html, doc, level=1):
+        try:
+            result = root.apply(html)
+        except Exception:
+            result = '__error__'
+        if isinstance(result, (list, tuple)):
+            for index, peace_of_result in enumerate(result):
+                if isinstance(peace_of_result, lxml.html.HtmlElement):
+                    context_doc = dict()
+                    doc[root.name + '_' + str(index)] = context_doc
+                    context_html = peace_of_result
+                else:
+                    doc.setdefault(root.name, dict()).update({index: peace_of_result})
+                    context_doc = doc[root.name]
+                    context_html = html
+                for rule in root.children:
+                    print(' ' * (level * 3) + '|_', str(rule))
+                    self._go_through_rules(rule, context_html, context_doc, level=level + 1)
+        else:
+            if isinstance(result, lxml.html.HtmlElement):
+                context_doc = dict()
+                doc[root.name] = context_doc
+                context_html = result
+            else:
+                doc[root.name] = result
+                context_doc = doc
+                context_html = html
+            for rule in root.children:
+                print(' ' * (level * 3) + '|_', str(rule))
+                self._go_through_rules(rule, context_html, context_doc, level=level + 1)
+
+    def go_through(self, html, doc):
+        root_rules = self._get_roots()
+        for root in root_rules:
+            print('|_', str(root))
+            self._go_through_rules(root, html, doc)
+
+    def parse(self, content):
+        doc = dict()
+        html = lxml.html.document_fromstring(content)
+        self.go_through(html, doc)
+        return doc
 
 
 class Rule(models.Model):
