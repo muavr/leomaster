@@ -5,7 +5,12 @@ from leoparser.models import Rule
 
 class Parser:
     def __init__(self):
-        self.rules = {rule.id: rule for rule in Rule.objects.all()}
+        self.rules = {rule.id: rule for rule in Rule.objects.select_related('typeof', 'parent').all()}
+        self._init_children()
+
+    def _init_children(self):
+        for _id, rule in self.rules.items():
+            rule.set_children([r for r in self.rules.values() if r.parent_id == _id])
 
     def _get_roots(self):
         return [rule for rule in self.rules.values() if rule.parent is None]
@@ -25,7 +30,7 @@ class Parser:
                     doc.setdefault(root.name, dict()).update({index: peace_of_result})
                     context_doc = doc[root.name]
                     context_html = html
-                for rule in root.children.all():
+                for rule in root.children:
                     print(' ' * (level * 3) + '|_', str(rule))
                     self._go_through_rules(rule, context_html, context_doc, level=level + 1)
         else:
@@ -37,7 +42,7 @@ class Parser:
                 doc[root.name] = result
                 context_doc = doc
                 context_html = html
-            for rule in root.children.all():
+            for rule in root.children:
                 print(' ' * (level * 3) + '|_', str(rule))
                 self._go_through_rules(rule, context_html, context_doc, level=level + 1)
 

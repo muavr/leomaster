@@ -15,7 +15,10 @@ class Rule(models.Model):
     regex = models.TextField(verbose_name='regex', blank=True)
     sub = models.TextField(verbose_name='sub', blank=True)
     typeof = models.ForeignKey('TypeOf', on_delete=models.CASCADE)
-    parent = models.ForeignKey('Rule', related_name='children', null=True, blank=True, on_delete=models.CASCADE)
+    parent = models.ForeignKey('Rule', related_name='children_set', null=True, blank=True, on_delete=models.CASCADE)
+
+    def set_children(self, children):
+        self.children = children
 
     class Meta:
         ordering = ('name', )
@@ -257,13 +260,6 @@ class GenericDocument(models.Model):
 
     def get_day_history(self):
         return self.get_history_period(days=1, zero_time=False)
-
-    def get_nth_history(self, n):
-        n = n if n >= 0 else None
-        queryset = self.get_history()
-        if n is None:
-            return queryset
-        return queryset[:n]
 
     def get_history_period(self, zero_time=True, **kwargs):
         zero_time = {'hour': 0, 'minute': 0, 'second': 0, 'microsecond': 0} if zero_time else {}
