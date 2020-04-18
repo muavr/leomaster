@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from leomaster_app.models import Masterclass
+from core.models import Masterclass
 
 
 class MasterclassSerializer(serializers.ModelSerializer):

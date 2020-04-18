@@ -4,11 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="{% static "leomaster_app/bootstrap/css/bootstrap.css" %}">
-    <link rel="stylesheet" href="{% static "leomaster_app/fontawesome/css/font-awesome.css" %}">
-    <link rel="stylesheet" href="{% static "leomaster_app/css/main.css" %}">
-    <link rel="stylesheet" href="{% static "leomaster_app/css/menu.css" %}">
-    <link rel="stylesheet" href="{% static "leomaster_app/css/on_top_button.css" %}">
+    <link rel="stylesheet" href="{% static "core/bootstrap/css/bootstrap.css" %}">
+    <link rel="stylesheet" href="{% static "core/fontawesome/css/font-awesome.css" %}">
+    <link rel="stylesheet" href="{% static "core/css/main.css" %}">
+    <link rel="stylesheet" href="{% static "core/css/menu.css" %}">
+    <link rel="stylesheet" href="{% static "core/css/on_top_button.css" %}">
     {% block stiles %}{% endblock %}
 
     <title>{% block title %}{{ site_title }}{% endblock %}</title>
@@ -36,9 +36,9 @@
 </div>
 <button class="slow-hidden" onclick="topFunction()" id="onTopBtn" title="Наверх"><i class="fa fa-angle-double-up fa-pw" aria-hidden="true"></i></button>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-<script src="{% static "leomaster_app/bootstrap/js/bootstrap.js" %}" type="text/javascript"></script>
-<script src="{% static "leomaster_app/js/on_top_button.js" %}" type="text/javascript"></script>
-<script src="{% static "leomaster_app/js/dynamic_download.js" %}" type="text/javascript"></script>
+<script src="{% static "core/bootstrap/js/bootstrap.js" %}" type="text/javascript"></script>
+<script src="{% static "core/js/on_top_button.js" %}" type="text/javascript"></script>
+<script src="{% static "core/js/dynamic_download.js" %}" type="text/javascript"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

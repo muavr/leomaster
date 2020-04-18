@@ -1,4 +1,4 @@
-"""leomaster_site URL Configuration
+"""leomaster URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/2.0/topics/http/urls/
@@ -17,7 +17,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path
-from leomaster_app import views
+from core import views
 
 urlpatterns = [
     path('', views.show_masterclasses, name='common', kwargs={'group': 'topic'}),

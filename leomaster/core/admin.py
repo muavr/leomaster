@@ -1,8 +1,8 @@
 from django.contrib import admin
 
-from leomaster_app.models import Master
-from leomaster_app.models import Location
-from leomaster_app.models import Masterclass
+from core.models import Master
+from core.models import Location
+from core.models import Masterclass
 
 
 @admin.register(Location)

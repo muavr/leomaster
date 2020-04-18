@@ -9,8 +9,8 @@ from datetime import datetime, timedelta
 from rest_framework import viewsets
 from rest_framework.renderers import JSONRenderer
 
-from leomaster_app.models import Masterclass
-from leomaster_app.serializers import MasterclassSerializer
+from core.models import Masterclass
+from core.serializers import MasterclassSerializer
 
 
 class MasterclassViewSet(viewsets.ReadOnlyModelViewSet):
@@ -45,5 +45,5 @@ def show_masterclasses(request, group):
     context = {
         'group': group
     }
-    return render(request, 'leomaster_app/last_added_masterclasses.html', context=context)
+    return render(request, 'core/last_added_masterclasses.html', context=context)
 
