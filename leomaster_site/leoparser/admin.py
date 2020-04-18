@@ -1,6 +1,15 @@
 from django import forms
 from django.contrib import admin
-from leoparser.models import Rule, TypeOf
+from leoparser.models import Parser, Rule, TypeOf
+
+
+class ParserAdminForm(forms.ModelForm):
+    name = forms.CharField()
+    rule_set = forms.ModelMultipleChoiceField(queryset=Rule.objects.all(), label='Rules')
+
+    class Meta:
+        model = Rule
+        fields = ('name', 'rule_set', )
 
 
 class RuleAdminForm(forms.ModelForm):
@@ -14,6 +23,12 @@ class RuleAdminForm(forms.ModelForm):
         fields = ('name', 'xpath', 'regex', 'typeof', )
 
 
+class ParserAdmin(admin.ModelAdmin):
+    form = ParserAdminForm
+    fields = ('name', 'rule_set', )
+    list_display = ('name', )
+
+
 class RuleAdmin(admin.ModelAdmin):
     form = RuleAdminForm
     fields = ('name', 'xpath', 'regex', 'sub', 'typeof', 'parent', )
@@ -25,5 +40,6 @@ class TypeOfAdmin(admin.ModelAdmin):
     list_display = ('name', )
 
 
+admin.site.register(Parser, ParserAdmin)
 admin.site.register(Rule, RuleAdmin)
 admin.site.register(TypeOf, TypeOfAdmin)
