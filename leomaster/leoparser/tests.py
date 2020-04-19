@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.utils import timezone
 from dictdiffer import diff, patch
 from dateutil.relativedelta import *
-from leoparser.models import Document, RemovableHistoryDocument, DocDelta
+from leoparser.models import Document, RemovableHistoryDocument, DocDelta, TestMappingDocument
 
 
 class TestDictdiffer(TestCase):
@@ -529,4 +529,19 @@ class TestRetrieveDocumentHistory(TestCase):
         self.assertEqual(self.doc_versions[0], history[3])
 
 
+class TestFieldMapping(TestCase):
 
+    def test_mapping_date_field(self):
+        date = timezone.now()
+        content = {
+            'date': {
+                'field': date
+            }
+        }
+        doc, _, _ = TestMappingDocument.history.save(content)
+        self.assertEqual(date, doc.date)
+        doc, _, _ = TestMappingDocument.history.save(content)
+
+    def test_mapping_missing_field(self):
+        doc, _, _ = TestMappingDocument.history.save({})
+        self.assertIsNone(doc.date)
