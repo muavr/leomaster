@@ -9,6 +9,8 @@ from dateutil.relativedelta import *
 from dictdiffer import diff, patch, revert
 from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.renderers import JSONRenderer
+from django.db.models.fields import NOT_PROVIDED
 
 
 class Parser(models.Model):
@@ -261,7 +263,36 @@ class HistoryManager(models.Manager):
         return doc, is_new, delta
 
 
-class GenericDocument(models.Model):
+class MetaDocument(models.base.ModelBase):
+
+    def __new__(mcs, *args, **kwargs):
+        document_class = super().__new__(mcs, *args, **kwargs)
+        mcs._check_mapping(mcs, document_class)
+        return document_class
+
+    def _check_mapping(mcs, document_class):
+        if hasattr(document_class, 'mapping'):
+            errors = []
+            for name in document_class.mapping.values():
+                field = mcs._get_field_by_name(mcs, document_class, name)
+                if field and field.default == NOT_PROVIDED:
+                    msg = ('Field "%s.%s" is used in mapping. '
+                           'In case of using field in mapping the default value must be specified.')
+                    raise AssertionError(msg % (document_class.__name__, name,))
+                elif not field:
+                    msg = 'Field "%s" was specified in mapping but it does not exist in model "%s".'
+                    raise AssertionError(msg % (name, document_class.__name__, ))
+            if errors:
+                raise AssertionError(errors)
+
+    def _get_field_by_name(mcs, document_class, name):
+        for field in document_class._meta.fields:
+            if field.name == name:
+                return field
+        return None
+
+
+class GenericDocument(models.Model, metaclass=MetaDocument):
     uid = models.TextField(unique=True)
     content = JSONField(default=dict, null=False)
     created = models.DateTimeField(auto_now_add=True)
@@ -269,6 +300,7 @@ class GenericDocument(models.Model):
     _track_change = False
     _track_add = False
     _track_remove = False
+    mapping = {}
 
     objects = models.Manager()
     history = HistoryManager()
@@ -288,12 +320,12 @@ class GenericDocument(models.Model):
             actions.append('remove')
         return actions
 
-    def __setattr__(self, key, value):
-        if key == 'content':
+    def __setattr__(self, name, value):
+        if name == 'content':
             # instance has already created
             if self.__dict__.get('id') and self._old_content is None:
                 self._old_content = self.__dict__.get('content')
-        return super().__setattr__(key, value)
+        return super().__setattr__(name, value)
 
     @property
     def patched_content(self):
@@ -304,8 +336,40 @@ class GenericDocument(models.Model):
     def save(self, *args, **kwargs):
         if self._old_content is not None:
             super().__setattr__('content', self.patched_content)
+        self._map_to_field()
+        self._prepare_content()
         super().save(*args, **kwargs)
         self._old_content = None
+
+    def _prepare_content(self):
+        """
+        Turn content to json using DRF JSONRenderer
+        :return: rendered json
+        """
+        rederer = JSONRenderer()
+        rendered_content = rederer.render(self.content)
+        rendered_content = rendered_content.decode(encoding='utf-8')
+        super().__setattr__('content', rendered_content)
+
+    def _map_to_field(self):
+        for path, field in self.mapping.items():
+            try:
+                value = self._extract_value_from_content(path)
+                super().__setattr__(field, value)
+            except KeyError:
+                pass
+
+    def _extract_value_from_content(self, path):
+        """
+        Extract value from dict by dot separated keys
+        :param path: dot separated keys
+        :return:
+        :exception: KeyError
+        """
+        value = self.content
+        for key in path.split('.'):
+            value = value[key]
+        return value
 
     @property
     def delta(self):
@@ -398,3 +462,10 @@ class Document(PersistentHistoryDocument):
 
 class RemovableHistoryDocument(UnsteadyHistoryDocument):
     pass
+
+
+class TestMappingDocument(PersistentHistoryDocument):
+    date = models.DateTimeField(null=True, default=None)
+    mapping = {
+        'date.field': 'date',
+    }
