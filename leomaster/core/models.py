@@ -23,7 +23,11 @@ class Category(models.Model):
 
 
 class Masterclass(PersistentHistoryDocument):
-    date = models.DateTimeField(verbose_name='date', null=True)
+    date = models.DateTimeField(verbose_name='date', null=True, default=None)
     master = models.ForeignKey(Master, verbose_name='master', null=True, on_delete=models.SET_NULL)
     category = models.ForeignKey(Category, verbose_name='category', null=True, on_delete=models.SET_NULL)
     location = models.ForeignKey(Location, verbose_name='location', null=True, on_delete=models.SET_NULL)
+
+    mapping = {
+        'datetime': date
+    }
