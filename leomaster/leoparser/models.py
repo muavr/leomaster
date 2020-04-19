@@ -273,15 +273,15 @@ class MetaDocument(models.base.ModelBase):
     def _check_mapping(mcs, document_class):
         if hasattr(document_class, 'mapping'):
             errors = []
-            for name in document_class.mapping.values():
-                field = mcs._get_field_by_name(mcs, document_class, name)
+            for item in document_class.mapping.values():
+                field = mcs._get_field_by_name(mcs, document_class, item) if isinstance(item, str) else item
                 if field and field.default == NOT_PROVIDED:
                     msg = ('Field "%s.%s" is used in mapping. '
                            'In case of using field in mapping the default value must be specified.')
-                    raise AssertionError(msg % (document_class.__name__, name,))
+                    raise AssertionError(msg % (document_class.__name__, item,))
                 elif not field:
                     msg = 'Field "%s" was specified in mapping but it does not exist in model "%s".'
-                    raise AssertionError(msg % (name, document_class.__name__, ))
+                    raise AssertionError(msg % (item, document_class.__name__, ))
             if errors:
                 raise AssertionError(errors)
 
@@ -467,5 +467,5 @@ class RemovableHistoryDocument(UnsteadyHistoryDocument):
 class TestMappingDocument(PersistentHistoryDocument):
     date = models.DateTimeField(null=True, default=None)
     mapping = {
-        'date.field': 'date',
+        'date.field': date,
     }
