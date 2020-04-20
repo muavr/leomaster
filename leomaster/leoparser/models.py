@@ -272,7 +272,6 @@ class MetaDocument(models.base.ModelBase):
 
     def _check_mapping(mcs, document_class):
         if hasattr(document_class, 'mapping'):
-            errors = []
             for item in document_class.mapping.values():
                 field = mcs._get_field_by_name(mcs, document_class, item) if isinstance(item, str) else item
                 if field and field.default == NOT_PROVIDED:
@@ -282,8 +281,6 @@ class MetaDocument(models.base.ModelBase):
                 elif not field:
                     msg = 'Field "%s" was specified in mapping but it does not exist in model "%s".'
                     raise AssertionError(msg % (item, document_class.__name__, ))
-            if errors:
-                raise AssertionError(errors)
 
     def _get_field_by_name(mcs, document_class, name):
         for field in document_class._meta.fields:
