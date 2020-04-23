@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.utils import timezone
 from dictdiffer import diff, patch
 from dateutil.relativedelta import *
-from leoparser.models import Document, RemovableHistoryDocument, DocDelta, TestMappingDocument
+from leoparser.models import Document, RemovableHistoryDocument, DocDelta, TestMappingDocument, TestRelatedModel
 
 
 class TestDictdiffer(TestCase):
@@ -349,7 +349,6 @@ class TestHistoryManagerWithDataUid(TestCase):
         today = timezone.now()
         last_datetime = today - relativedelta(years=years, months=months, weeks=weeks, days=days,
                                               hours=hours, minutes=minutes, seconds=seconds)
-        print(last_datetime)
         with mock.patch('django.utils.timezone.now', mock.Mock(return_value=last_datetime)):
             doc, _, _ = Document.history.save(content=self.modified)
 
@@ -540,8 +539,63 @@ class TestFieldMapping(TestCase):
         }
         doc, _, _ = TestMappingDocument.history.save(content)
         self.assertEqual(date, doc.date)
-        doc, _, _ = TestMappingDocument.history.save(content)
 
     def test_mapping_missing_field(self):
         doc, _, _ = TestMappingDocument.history.save({})
         self.assertIsNone(doc.date)
+
+    def test_mapping_foreign_key_field(self):
+        content = {
+            'nested': {
+                'name': 'name',
+                'title': 'title'
+            }
+        }
+        doc, _, _ = TestMappingDocument.history.save(content)
+        related = TestRelatedModel.objects.all()
+        self.assertEqual(1, len(related))
+        self.assertEqual('name', related[0].name)
+        self.assertEqual('title', related[0].title)
+        self.assertEqual('name', doc.related.name)
+        self.assertEqual('title', doc.related.title)
+
+    def test_mapping_broken_foreign_key_field(self):
+        content = {
+            'nested': {
+                'name': 'name',
+                'broken_field': 'title',
+            }
+        }
+        doc, _, _ = TestMappingDocument.history.save(content)
+        related = TestRelatedModel.objects.all()
+        self.assertEqual(0, len(related))
+
+    def test_mapping_already_existing_foreign_key_field(self):
+        nested = {
+                'name': 'name',
+                'title': 'title',
+            }
+        content = {
+            'nested': nested
+        }
+        TestRelatedModel.objects.create(**nested)
+        doc, _, _ = TestMappingDocument.history.save(content)
+
+        related = TestRelatedModel.objects.all()
+        self.assertEqual(1, len(related))
+        self.assertEqual('name', related[0].name)
+        self.assertEqual('title', related[0].title)
+        self.assertEqual('name', doc.related.name)
+        self.assertEqual('title', doc.related.title)
+
+    def test_mapping_many_returned_foreign_key_field(self):
+        content = {
+            'nested': {'name': 'name'}
+        }
+        TestRelatedModel.objects.create(name='name', title='title_1')
+        TestRelatedModel.objects.create(name='name', title='title_2')
+        doc, _, _ = TestMappingDocument.history.save(content)
+
+        related = TestRelatedModel.objects.all()
+        self.assertEqual(2, len(related))
+        self.assertIsNone(doc.related)
