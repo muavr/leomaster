@@ -2,15 +2,21 @@ import re
 import json
 import uuid
 import lxml
+import logging
 import lxml.html
+
 from django.db import models
+from django.db.models.fields import NOT_PROVIDED
+
 from django.utils import timezone
+from django.contrib.postgres.fields import JSONField
+from django.core.serializers.json import DjangoJSONEncoder
+from django.core.exceptions import ObjectDoesNotExist, FieldError, MultipleObjectsReturned
+
 from dateutil.relativedelta import *
 from dictdiffer import diff, patch, revert
-from django.contrib.postgres.fields import JSONField
-from django.core.exceptions import ObjectDoesNotExist
-from rest_framework.renderers import JSONRenderer
-from django.db.models.fields import NOT_PROVIDED
+
+LOG = logging.getLogger(__name__)
 
 
 class Parser(models.Model):
@@ -92,7 +98,7 @@ class Rule(models.Model):
         self.children = children
 
     class Meta:
-        ordering = ('name', )
+        ordering = ('name',)
         unique_together = ('name', 'parent',)
 
     def apply(self, element):
@@ -223,7 +229,7 @@ class TypeOf(models.Model):
 class DocDelta(models.Model):
     base = models.ForeignKey('GenericDocument', related_name='delta_set', null=False, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True)
-    delta = JSONField(default=list)
+    delta = JSONField(default=list, encoder=DjangoJSONEncoder)
 
     class Meta:
         ordering = ('-created',)
@@ -265,25 +271,25 @@ class HistoryManager(models.Manager):
 
 class MetaDocument(models.base.ModelBase):
 
-    def __new__(mcs, *args, **kwargs):
-        document_class = super().__new__(mcs, *args, **kwargs)
-        mcs._check_mapping(mcs, document_class)
-        return document_class
+    def __init__(cls, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        cls._check_mapping()
+        setattr(cls, 'get_field_by_name', cls._get_field_by_name)
 
-    def _check_mapping(mcs, document_class):
-        if hasattr(document_class, 'mapping'):
-            for item in document_class.mapping.values():
-                field = mcs._get_field_by_name(mcs, document_class, item) if isinstance(item, str) else item
+    def _check_mapping(cls):
+        if hasattr(cls, 'mapping'):
+            for item in cls.mapping.values():
+                field = cls._get_field_by_name(item) if isinstance(item, str) else item
                 if field and field.default == NOT_PROVIDED:
                     msg = ('Field "%s.%s" is used in mapping. '
                            'In case of using field in mapping the default value must be specified.')
-                    raise AssertionError(msg % (document_class.__name__, item,))
+                    raise AssertionError(msg % (cls.__name__, field.name,))
                 elif not field:
                     msg = 'Field "%s" was specified in mapping but it does not exist in model "%s".'
-                    raise AssertionError(msg % (item, document_class.__name__, ))
+                    raise AssertionError(msg % (item, cls.__name__,))
 
-    def _get_field_by_name(mcs, document_class, name):
-        for field in document_class._meta.fields:
+    def _get_field_by_name(cls, name):
+        for field in cls._meta.fields:
             if field.name == name:
                 return field
         return None
@@ -291,7 +297,7 @@ class MetaDocument(models.base.ModelBase):
 
 class GenericDocument(models.Model, metaclass=MetaDocument):
     uid = models.TextField(unique=True)
-    content = JSONField(default=dict, null=False)
+    content = JSONField(default=dict, null=False, encoder=DjangoJSONEncoder)
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     _track_change = False
@@ -334,27 +340,40 @@ class GenericDocument(models.Model, metaclass=MetaDocument):
         if self._old_content is not None:
             super().__setattr__('content', self.patched_content)
         self._map_to_field()
-        self._prepare_content()
         super().save(*args, **kwargs)
         self._old_content = None
 
-    def _prepare_content(self):
-        """
-        Turn content to json using DRF JSONRenderer
-        :return: rendered json
-        """
-        rederer = JSONRenderer()
-        rendered_content = rederer.render(self.content)
-        rendered_content = rendered_content.decode(encoding='utf-8')
-        super().__setattr__('content', rendered_content)
-
     def _map_to_field(self):
-        for path, field in self.mapping.items():
-            try:
-                value = self._extract_value_from_content(path)
-                super().__setattr__(field, value)
-            except KeyError:
-                pass
+        for path, target in self.mapping.items():
+            field = self.get_field_by_name(target) if isinstance(target, str) else target
+            if field is not None:
+                try:
+                    value = self._extract_value_from_content(path)
+                except KeyError:
+                    LOG.warning('Path "%(path)s" does not exist in content (path="%(path)s" content="%(content)s")',
+                                {'path': path, 'content': self.content})
+                    continue
+
+                if isinstance(field, models.ForeignKey) and isinstance(value, dict):
+                    try:
+                        model = field.related_model
+                        related_instance, _ = model.objects.get_or_create(**value)
+                        value = related_instance
+                    except (FieldError, MultipleObjectsReturned) as err:
+                        vars = path, field.name, path, self.content, value
+                        if isinstance(err, FieldError):
+                            LOG.exception('Field error detected during mapping "%s" on "%s" foreign key '
+                                          '(path="%s" content="%s" value="%s")', *vars)
+                        elif isinstance(err, MultipleObjectsReturned):
+                            LOG.exception('Multiple objects returned during mapping "%s" on "%s" foreign key '
+                                          '(path="%s" content="%s" value="%s")', *vars)
+                        continue
+
+                super().__setattr__(field.name, value)
+            else:
+                LOG.warning('Could not determine field by target "%(target)s" '
+                            'for model "%(model)s" (target="%(target)s" model="%(model)s")',
+                            {'target': target, 'model': self.__class__.__name__})
 
     def _extract_value_from_content(self, path):
         """
@@ -396,7 +415,6 @@ class GenericDocument(models.Model, metaclass=MetaDocument):
         today = timezone.now()
         delta = relativedelta(**zero_time, **kwargs)
         last_date = today - delta
-        print(last_date)
         return self.get_history(created__gte=last_date)
 
     def get_history(self, n=-1, **kwargs):
@@ -461,8 +479,15 @@ class RemovableHistoryDocument(UnsteadyHistoryDocument):
     pass
 
 
+class TestRelatedModel(models.Model):
+    name = models.TextField()
+    title = models.TextField()
+
+
 class TestMappingDocument(PersistentHistoryDocument):
     date = models.DateTimeField(null=True, default=None)
+    related = models.ForeignKey(TestRelatedModel, null=True, default=None, on_delete=models.SET_NULL)
     mapping = {
-        'date.field': date,
+        'date.field': 'date',
+        'nested': related
     }
